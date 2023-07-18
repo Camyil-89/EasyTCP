@@ -9,5 +9,6 @@ namespace EasyTCP.Packets
 		RSTStopwatch = 2,
 		ReceiveInfo = 3,
 		FirewallBlock = 4,
+		Serialize = 5,
 	}
 }

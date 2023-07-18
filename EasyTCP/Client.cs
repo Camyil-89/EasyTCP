@@ -1,5 +1,6 @@
 ﻿using EasyTCP.Firewall;
 using EasyTCP.Packets;
+using EasyTCP.Serialize;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -57,13 +58,17 @@ namespace EasyTCP
 	{
 		public Connection Connection { get; private set; }
 		private TcpClient TCPClient { get; set; }
-		public bool Connect(string host, int port)
+		public bool Connect(string host, int port, ISerialization serialization = null)
 		{
 			try
 			{
 				TCPClient = new TcpClient();
 				TCPClient.Connect(host, port);
-				Connection = new Connection(TCPClient.GetStream(), 700, 700);
+				Connection = new Connection(TCPClient.GetStream(), TypeConnection.Client, 700, 700);
+
+				if (serialization != null)
+					Connection.Serialization = serialization;
+
 				Connection.Init();
 				return true;
 			}

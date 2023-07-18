@@ -17,6 +17,7 @@ namespace EasyTCP
 	}
 	public class Server
 	{
+		public Serialize.ISerialization Serialization { get; private set; } = new Serialize.StandardSerialize();
 		public List<ServerClient> Clients { get; private set; } = new List<ServerClient>();
 		public TcpListener TcpListener { get; private set; }
 		public IFirewall Firewall { get; private set; }
@@ -29,9 +30,11 @@ namespace EasyTCP
 
 		public delegate void CallbackDisconnectClient(ServerClient client);
 		public event CallbackDisconnectClient CallbackDisconnectClientEvent;
-		public void Start(int socket, IFirewall firewall = null)
+		public void Start(int socket, IFirewall firewall = null, Serialize.ISerialization serialization = null)
 		{
 			Firewall = firewall;
+			if (serialization != null)
+				Serialization = serialization;
 			TcpListener = new TcpListener(IPAddress.Any, socket);
 			TcpListener.Start();
 			Task.Run(Listener);
@@ -59,9 +62,10 @@ namespace EasyTCP
 		{
 			ServerClient serverClient = new ServerClient();
 
-			Connection connection = new Connection(client.GetStream());
+			Connection connection = new Connection(client.GetStream(), TypeConnection.Server);
 			connection.CallbackReceiveEvent += Receive;
 			connection.Firewall = Firewall;
+			connection.Serialization = Serialization;
 			connection.Init();
 
 			serverClient.Connection = connection;

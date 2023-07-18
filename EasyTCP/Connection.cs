@@ -1,4 +1,5 @@
 ﻿using EasyTCP.Packets;
+using EasyTCP.Serialize;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -21,28 +22,38 @@ namespace EasyTCP
 		public bool RSTStopwatch { get; set; } = false;
 		public List<PacketReceiveInfo> ReceiveInfo { get; set; } = new List<PacketReceiveInfo>();
 	}
+	public enum TypeConnection : byte
+	{
+		Client = 0,
+		Server = 1,
+	}
 	public class Connection
 	{
 		private Dictionary<int, WaitInfoPacket> WaitPackets = new Dictionary<int, WaitInfoPacket>();
 		private byte[] Buffer;
 		public NetworkStream NetworkStream { get; set; }
+		public TypeConnection Mode { get; private set; } = TypeConnection.Client;
 		public ISerialization Serialization { get; set; } = new StandardSerialize();
 		public Firewall.IFirewall Firewall { get; set; } = null;
 
 		public delegate void CallbackReceive(BasePacket packet);
 		public event CallbackReceive CallbackReceiveEvent;
+		public delegate void CallbackReceiveSerialization(BasePacket packet);
+		public event CallbackReceiveSerialization CallbackReceiveSerializationEvent;
 
-		public Connection(NetworkStream stream, int read_timeout = 700, int write_timeout = 700)
+		public Connection(NetworkStream stream, TypeConnection mode, int read_timeout = 700, int write_timeout = 700)
 		{
 			NetworkStream = stream;
 			NetworkStream.ReadTimeout = read_timeout;
 			NetworkStream.WriteTimeout = write_timeout;
+			Mode = mode;
 		}
 
 		public void Init()
 		{
 			Buffer = new byte[1024 * 64]; // 64 kb
 			RXHandler();
+			Serialization.InitConnection(this);
 		}
 		public async Task Send(BasePacket packet, PacketMode mode = PacketMode.Hidden)
 		{
@@ -50,15 +61,8 @@ namespace EasyTCP
 			raw = Serialization.Raw(packet);
 			await WriteStream(raw, packet.UID, mode);
 		}
-		private async Task WriteStream(byte[] data, int uid, PacketMode mode = PacketMode.Hidden)
+		public async Task WriteStream(byte[] data, int uid, PacketMode mode = PacketMode.Hidden)
 		{
-			//int length = data.Length;
-			//byte[] lengthBytes = BitConverter.GetBytes(length);
-			//
-			//byte[] result = new byte[length + sizeof(int)];
-			//lengthBytes.CopyTo(result, 0);
-			//data.CopyTo(result, sizeof(int));
-
 			var header = HeaderPacket.Create(data.Length, uid, mode);
 
 			int structSize = Marshal.SizeOf(header);
@@ -120,6 +124,7 @@ namespace EasyTCP
 						}
 						else
 						{
+							Task.Run(() => { CallbackReceiveSerializationEvent?.Invoke(packet); });
 							Task.Run(() => { CallbackReceiveEvent?.Invoke(packet); });
 						}
 					});
