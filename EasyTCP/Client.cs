@@ -95,7 +95,7 @@ namespace EasyTCP
 					count = info.ReceiveInfo.Count;
 					yield return new ResponseInfo() { Info = last_rec_info };
 				}
-				Thread.Sleep(16);
+				Thread.Sleep(1);
 			}
 			if (info.Packet == null)
 				throw new ExceptionEasyTCPTimeout($"Timeout wait response! {stopwatch.ElapsedMilliseconds} \\ {timeout}");
@@ -113,7 +113,7 @@ namespace EasyTCP
 				}
 				if (info.Packet != null)
 					return info.Packet;
-				Thread.Sleep(16);
+				Thread.Sleep(1);
 			}
 			throw new ExceptionEasyTCPTimeout($"Timeout wait response! {stopwatch.ElapsedMilliseconds} \\ {timeout}");
 		}
