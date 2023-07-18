@@ -22,6 +22,18 @@ namespace EasyTCP
 		{
 		}
 	}
+	public class ExceptionEasyTCPAbortConnect : Exception
+	{
+		public ExceptionEasyTCPAbortConnect(string message)
+		: base(message)
+		{
+		}
+
+		public ExceptionEasyTCPAbortConnect(string message, Exception inner)
+			: base(message, inner)
+		{
+		}
+	}
 	public class ExceptionEasyTCPTimeout : Exception
 	{
 		public ExceptionEasyTCPTimeout(string message)
@@ -44,13 +56,14 @@ namespace EasyTCP
 	public class Client
 	{
 		public Connection Connection { get; private set; }
+		private TcpClient TCPClient { get; set; }
 		public bool Connect(string host, int port)
 		{
 			try
 			{
-				TcpClient client = new TcpClient();
-				client.Connect(host, port);
-				Connection = new Connection(client.GetStream(), 700, 700);
+				TCPClient = new TcpClient();
+				TCPClient.Connect(host, port);
+				Connection = new Connection(TCPClient.GetStream(), 700, 700);
 				Connection.Init();
 				return true;
 			}
@@ -65,7 +78,10 @@ namespace EasyTCP
 			int count = 0;
 			while (stopwatch.ElapsedMilliseconds < timeout)
 			{
-
+				if (TCPClient.Connected == false || Connection.NetworkStream == null)
+				{
+					throw new ExceptionEasyTCPAbortConnect("Lost connect with server!");
+				}
 				if (info.Packet != null)
 				{
 					if (info.Packet is PacketFirewall)
@@ -91,6 +107,10 @@ namespace EasyTCP
 			var info = Connection.SendAndWaitUnlimited(packet);
 			while (stopwatch.ElapsedMilliseconds < timeout)
 			{
+				if (TCPClient.Connected == false || Connection.NetworkStream == null)
+				{
+					throw new ExceptionEasyTCPAbortConnect("Lost connect with server!");
+				}
 				if (info.Packet != null)
 					return info.Packet;
 				Thread.Sleep(16);

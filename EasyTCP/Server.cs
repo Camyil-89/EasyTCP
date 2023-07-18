@@ -43,7 +43,12 @@ namespace EasyTCP
 				try
 				{
 					var client = TcpListener.AcceptTcpClient();
-
+					if (Firewall.ValidateConnect(client) == false)
+					{
+						client.Close();
+						client.Dispose();
+						continue;
+					}
 					Thread thread = new Thread(() => { HandlerClient(client); });
 					thread.Start();
 				}
