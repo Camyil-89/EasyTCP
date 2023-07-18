@@ -9,7 +9,7 @@ internal class Firewall : IFirewall
 		public Dictionary<string, DateTime> BannedIP { get; set; } = new Dictionary<string, DateTime>();
 
 		public int TimeBanned { get; set; } = 300; // seconds
-		public int MaxPerMinuteConnection { get; set; } = 0;
+		public int MaxPerMinuteConnection { get; set; } = 10;
 		public int MaxSizePacket { get; set; } = 1024 * 1024 * 25; // 25 mb
 		public bool ValidateConnect(TcpClient client)
 		{
