@@ -162,7 +162,7 @@ namespace EasyTCP.Serialize
 		{
 			while (Connection != null && Connection.NetworkStream != null)
 			{
-				Thread.Sleep(1);
+				Thread.Sleep(10000);
 				Console.WriteLine("UPDATE KEYS");
 				var aes = new SecureAES();
 				aes.CreateKey();
