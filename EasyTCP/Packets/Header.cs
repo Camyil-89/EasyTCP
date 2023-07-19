@@ -8,6 +8,7 @@ namespace EasyTCP.Packets
 	{
 		Hidden = 0,
 		Info = 1,
+		ReceiveInfo = 2,
 	}
 	[StructLayout(LayoutKind.Sequential, Pack = 1)]
 	public struct HeaderPacket

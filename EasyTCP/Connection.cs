@@ -13,14 +13,16 @@ using System.Threading.Tasks;
 
 namespace EasyTCP
 {
-    public class WaitInfoPacket
+	public class WaitInfoPacket
 	{
 		public DateTime Time { get; set; } = DateTime.Now;
+		public bool IsReadFromServer { get; set; } = false;
 		public int Timeout { get; set; }
 		public BasePacket Packet { get; set; } = null;
 		public Stopwatch Stopwatch { get; set; } = Stopwatch.StartNew();
 		public bool RSTStopwatch { get; set; } = false;
-		public List<PacketReceiveInfo> ReceiveInfo { get; set; } = new List<PacketReceiveInfo>();
+		public List<PacketReceiveInfo> ReceiveServer { get; set; } = new List<PacketReceiveInfo>();
+		public List<PacketReceiveInfo> ReceiveClient { get; set; } = new List<PacketReceiveInfo>();
 	}
 	public enum TypeConnection : byte
 	{
@@ -35,6 +37,7 @@ namespace EasyTCP
 		public TypeConnection Mode { get; private set; } = TypeConnection.Client;
 		public ISerialization Serialization { get; set; } = new StandardSerialize();
 		public Firewall.IFirewall Firewall { get; set; } = null;
+		public int BlockSizeForSendInfoReceive { get; set; } = 1024 * 1024;
 
 		public delegate void CallbackReceive(BasePacket packet);
 		public event CallbackReceive CallbackReceiveEvent;
@@ -59,7 +62,7 @@ namespace EasyTCP
 		{
 			byte[] raw = new byte[0];
 			raw = Serialization.Raw(packet);
-			await WriteStream(raw, packet.UID, mode);
+			await WriteStream(raw, packet.UID, packet.Type == TypePacket.ReceiveInfo ? PacketMode.ReceiveInfo: mode);
 		}
 		public async Task WriteStream(byte[] data, int uid, PacketMode mode = PacketMode.Hidden)
 		{
@@ -115,7 +118,7 @@ namespace EasyTCP
 							}
 							else if (packet.Type == TypePacket.ReceiveInfo)
 							{
-								WaitPackets[packet.UID].ReceiveInfo.Add((PacketReceiveInfo)packet);
+								WaitPackets[packet.UID].ReceiveServer.Add((PacketReceiveInfo)packet);
 								WaitPackets[packet.UID].Stopwatch.Restart();
 								WaitPackets[packet.UID].RSTStopwatch = true;
 							}
@@ -155,8 +158,6 @@ namespace EasyTCP
 			if (Firewall != null && Firewall.ValidateHeader(header) == false)
 			{
 				await Send(new Firewall.PacketFirewall() { UID = header.UID, Answer = Firewall.ValidateHeaderAnswer(header) });
-				//Console.WriteLine($"[CONNECTION FIREWALL] ValidateHeader");
-				// очищаем поток
 				while (totalBytesRead < header.DataSize)
 				{
 					var buffer_size = (int)(Buffer.Length <= header.DataSize - totalBytesRead ? Buffer.Length : header.DataSize - totalBytesRead);
@@ -166,6 +167,7 @@ namespace EasyTCP
 				}
 				return null;
 			}
+			int bytes_read_to_send_info = 0;
 			using (MemoryStream ms = new MemoryStream())
 			{
 				while (totalBytesRead < header.DataSize)
@@ -173,14 +175,37 @@ namespace EasyTCP
 					var buffer_size = (int)(Buffer.LongLength <= header.DataSize - totalBytesRead ? Buffer.Length : header.DataSize - totalBytesRead);
 					bytesRead = await NetworkStream.ReadAsync(Buffer, 0, buffer_size).ConfigureAwait(false);
 					totalBytesRead += bytesRead;
+					bytes_read_to_send_info += bytesRead;
 					ms.Write(Buffer, 0, bytesRead);
-					if (header.Mode == PacketMode.Info)
+					if (WaitPackets.ContainsKey(header.UID) && header.Mode != PacketMode.ReceiveInfo && bytes_read_to_send_info >= BlockSizeForSendInfoReceive)
 					{
-						//Console.WriteLine("ASD");
+						bytes_read_to_send_info = 0;
+						WaitPackets[header.UID].RSTStopwatch = true;
+						WaitPackets[header.UID].IsReadFromServer = true;
+						WaitPackets[header.UID].ReceiveClient.Add(new PacketReceiveInfo() { Receive = totalBytesRead, TotalNeedReceive = header.DataSize});
+						WaitPackets[header.UID].Stopwatch.Restart();
+					}
+					if (header.Mode == PacketMode.Info && bytes_read_to_send_info >= BlockSizeForSendInfoReceive) // позволяет уменьшить накладные расходы.
+					{
+						bytes_read_to_send_info = 0;
 						Send(new PacketReceiveInfo() { UID = header.UID, Receive = totalBytesRead, TotalNeedReceive = header.DataSize });
 					}
 					//Statistics.RXBytes += bytesRead;
 				}
+
+				if (WaitPackets.ContainsKey(header.UID) && header.Mode != PacketMode.ReceiveInfo)
+				{
+					WaitPackets[header.UID].RSTStopwatch = true;
+					WaitPackets[header.UID].IsReadFromServer = true;
+					WaitPackets[header.UID].ReceiveClient.Add(new PacketReceiveInfo() { Receive = totalBytesRead, TotalNeedReceive = header.DataSize });
+					WaitPackets[header.UID].Stopwatch.Restart();
+				}
+				if (header.Mode == PacketMode.Info) // позволяет уменьшить накладные расходы.
+				{
+					Send(new PacketReceiveInfo() { UID = header.UID, Receive = totalBytesRead, TotalNeedReceive = header.DataSize });
+				}
+
+
 				if (totalBytesRead < header.DataSize)
 				{
 					//Console.WriteLine($"ERROR READ");

@@ -52,6 +52,8 @@ namespace EasyTCP
 		public BasePacket Packet { get; set; } = null;
 
 		public PacketReceiveInfo Info { get; set; }
+
+		public bool ReceiveFromServer = false;
 	}
 
 	public class Client
@@ -80,7 +82,8 @@ namespace EasyTCP
 			Stopwatch stopwatch = Stopwatch.StartNew();
 			var info = Connection.SendAndWaitUnlimited(packet, PacketMode.Info);
 			PacketReceiveInfo last_rec_info = new PacketReceiveInfo() { Receive = 0, TotalNeedReceive = 0 };
-			int count = 0;
+			int count_server = 0;
+			int count_client = 0;
 			while (stopwatch.ElapsedMilliseconds < timeout)
 			{
 				if (TCPClient.Connected == false || Connection.NetworkStream == null)
@@ -94,11 +97,17 @@ namespace EasyTCP
 					yield return new ResponseInfo() { Packet = info.Packet, Info = last_rec_info };
 					break;
 				}
-				else if (count != info.ReceiveInfo.Count)
+				else if (count_server != info.ReceiveServer.Count && info.IsReadFromServer == false)
 				{
-					last_rec_info = info.ReceiveInfo.Last();
-					count = info.ReceiveInfo.Count;
+					last_rec_info = info.ReceiveServer.Last();
+					count_server++;
 					yield return new ResponseInfo() { Info = last_rec_info };
+				}
+				else if (count_client != info.ReceiveClient.Count && info.IsReadFromServer == true)
+				{
+					last_rec_info = info.ReceiveClient.Last();
+					count_client++;
+					yield return new ResponseInfo() { Info = last_rec_info, ReceiveFromServer = true };
 				}
 				Thread.Sleep(1);
 			}

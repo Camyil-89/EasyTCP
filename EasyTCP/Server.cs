@@ -46,7 +46,7 @@ namespace EasyTCP
 				try
 				{
 					var client = TcpListener.AcceptTcpClient();
-					if (Firewall.ValidateConnect(client) == false)
+					if (Firewall != null && Firewall.ValidateConnect(client) == false)
 					{
 						client.Close();
 						client.Dispose();
