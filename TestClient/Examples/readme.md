@@ -1,12 +1,16 @@
 # Simple
 Пример простого TCP соединение между клиентом и сервером.
 ## Клиент
-![image](https://github.com/Camyil-89/EasyTCP/assets/76705837/0f2ba03e-30bf-462a-b2cf-0103ff52f63c)
+![image](https://github.com/Camyil-89/EasyTCP/assets/76705837/ed5a9589-fbba-49bb-a188-cd542bf39cd5)
 ```C#
 [Serializable]
 	internal class MyPacket : EasyTCP.Packets.BasePacket
 	{
 		public string Message = "Hello server!";
+		public override string ToString()
+		{
+			return $"{base.ToString()} | {Message}";
+		}
 	}
 
 	[Serializable]
@@ -44,7 +48,7 @@
 	}
 ```
 ## Сервер
-![image](https://github.com/Camyil-89/EasyTCP/assets/76705837/921afd89-2712-46d0-8721-cd35338bd819)
+![image](https://github.com/Camyil-89/EasyTCP/assets/76705837/8cee742c-5dad-485e-b003-556688c6dca4)
 ```C#
 internal class example_server
 	{
