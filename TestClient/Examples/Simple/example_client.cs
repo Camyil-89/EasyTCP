@@ -7,6 +7,10 @@ namespace TestClient.Examples.Simple
 	internal class MyPacket : EasyTCP.Packets.BasePacket
 	{
 		public string Message = "Hello server!";
+		public override string ToString()
+		{
+			return $"{base.ToString()} | {Message}";
+		}
 	}
 
 	[Serializable]

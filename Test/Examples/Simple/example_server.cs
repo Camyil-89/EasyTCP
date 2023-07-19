@@ -6,11 +6,6 @@ using System.Threading.Tasks;
 
 namespace Test.Examples.Simple
 {
-	[Serializable]
-	internal class MyServerPacket : EasyTCP.Packets.BasePacket
-	{
-		public string Message { get; set; }
-	}
 	internal class example_server
 	{
 
