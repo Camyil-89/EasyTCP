@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Test.Examples.Simple
+namespace TestServer.Examples.Simple
 {
 	internal class example_server
 	{
@@ -15,10 +15,10 @@ namespace Test.Examples.Simple
 			server.Start(2020);
 			server.CallbackConnectClientEvent += Server_CallbackConnectClientEvent;
 			server.CallbackDisconnectClientEvent += Server_CallbackDisconnectClientEvent;
-			server.CallbackReceiveEvent += Server_CallbackReceiveEvent;
+			//server.CallbackReceiveEvent += Server_CallbackReceiveEvent;
 		}
 
-		private void Server_CallbackReceiveEvent(EasyTCP.Packets.BasePacket packet)
+		private void Server_CallbackReceiveEvent(EasyTCP.Packets.Packet packet)
 		{
 			Console.WriteLine($"[SERVER RECEIVE] {packet}");
 			packet.Answer(packet);

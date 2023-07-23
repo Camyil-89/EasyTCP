@@ -1,6 +1,7 @@
 ﻿using EasyTCP.Firewall;
 using EasyTCP.Packets;
 using EasyTCP.Serialize;
+using EasyTCP.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -47,18 +48,25 @@ namespace EasyTCP
 		{
 		}
 	}
-	public class ResponseInfo
+	public class ResponseInfo<T>
 	{
-		public BasePacket Packet { get; set; } = null;
+		public T Packet { get; set; }
 
-		public PacketReceiveInfo Info { get; set; }
+		public ReceiveInfo Info { get; set; }
 
 		public bool ReceiveFromServer = false;
-	}
+
+        public ResponseInfo()
+        {
+			object obj = null;
+			Packet = (T)obj;
+        }
+    }
 
 	public class Client
 	{
 		public Connection Connection { get; private set; }
+		public PacketEntityManager PacketEntityManager { get; private set; } = new PacketEntityManager();
 		private TcpClient TCPClient { get; set; }
 		public bool Connect(string host, int port, ISerialization serialization = null)
 		{
@@ -72,16 +80,27 @@ namespace EasyTCP
 					Connection.Serialization = serialization;
 
 				Connection.Init();
+				Connection.CallbackReceiveEvent += Connection_CallbackReceiveEvent;
 				return true;
 			}
 			catch { return false; }
 		}
 
-		public IEnumerable<ResponseInfo> SendAndReceiveInfo(BasePacket packet, int timeout = int.MaxValue)
+		private void Connection_CallbackReceiveEvent(Packet packet)
+		{
+			if (packet.Header.Type == PacketType.None &&
+				PacketEntityManager.IsEntity(packet.Header.TypePacket) != 0)
+			{
+				PacketEntityManager.ReceivePacket(packet, Connection.Serialization);
+				return;
+			}
+		}
+
+		public IEnumerable<ResponseInfo<T>> SendAndReceiveInfo<T>(T obj, int timeout = int.MaxValue)
 		{
 			Stopwatch stopwatch = Stopwatch.StartNew();
-			var info = Connection.SendAndWaitUnlimited(packet, PacketMode.Info);
-			PacketReceiveInfo last_rec_info = new PacketReceiveInfo() { Receive = 0, TotalNeedReceive = 0 };
+			var info = Connection.SendAndWaitUnlimited(obj, PacketType.None, PacketMode.Info);
+			ReceiveInfo last_rec_info = new ReceiveInfo();
 			int count_server = 0;
 			int count_client = 0;
 			while (stopwatch.ElapsedMilliseconds < timeout)
@@ -92,33 +111,36 @@ namespace EasyTCP
 				}
 				if (info.Packet != null)
 				{
-					if (info.Packet is PacketFirewall)
-						throw new ExceptionEasyTCPFirewall(((PacketFirewall)info.Packet).Answer);
-					yield return new ResponseInfo() { Packet = info.Packet, Info = last_rec_info };
+					if (info.Packet.Header.Type == PacketType.FirewallBlock)
+					{
+						throw new ExceptionEasyTCPFirewall("");
+					}
+					yield return new ResponseInfo<T>() { Packet = Connection.Serialization.FromRaw<T>(info.Packet.Bytes), Info = last_rec_info };
 					break;
 				}
 				else if (count_server != info.ReceiveServer.Count && info.IsReadFromServer == false)
 				{
 					last_rec_info = info.ReceiveServer.Last();
 					count_server++;
-					yield return new ResponseInfo() { Info = last_rec_info };
+					yield return new ResponseInfo<T>() { Info = last_rec_info };
 				}
 				else if (count_client != info.ReceiveClient.Count && info.IsReadFromServer == true)
 				{
 					last_rec_info = info.ReceiveClient.Last();
 					count_client++;
-					yield return new ResponseInfo() { Info = last_rec_info, ReceiveFromServer = true };
+					yield return new ResponseInfo<T>() { Info = last_rec_info, ReceiveFromServer = true };
 				}
 				Thread.Sleep(1);
 			}
 			if (info.Packet == null)
 				throw new ExceptionEasyTCPTimeout($"Timeout wait response! {stopwatch.ElapsedMilliseconds} \\ {timeout}");
 		}
-
-		public BasePacket SendAndWaitResponse(BasePacket packet, int timeout = int.MaxValue)
+		public T SendAndWaitResponse<T>(T obj, int timeout = int.MaxValue)
 		{
 			Stopwatch stopwatch = Stopwatch.StartNew();
-			var info = Connection.SendAndWaitUnlimited(packet);
+
+
+			var info = Connection.SendAndWaitUnlimited(obj, PacketType.None, PacketMode.Hidden, PacketEntityManager.IsEntity(typeof(T)));
 			while (stopwatch.ElapsedMilliseconds < timeout)
 			{
 				if (TCPClient.Connected == false || Connection.NetworkStream == null)
@@ -126,7 +148,7 @@ namespace EasyTCP
 					throw new ExceptionEasyTCPAbortConnect("Lost connect with server!");
 				}
 				if (info.Packet != null)
-					return info.Packet;
+					return Connection.Serialization.FromRaw<T>(info.Packet.Bytes);
 				Thread.Sleep(1);
 			}
 			throw new ExceptionEasyTCPTimeout($"Timeout wait response! {stopwatch.ElapsedMilliseconds} \\ {timeout}");

@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using EasyTCP.Packets;
 using EasyTCP.Firewall;
+using EasyTCP.Utilities;
 
 namespace EasyTCP
 {
@@ -21,8 +22,9 @@ namespace EasyTCP
 		public List<ServerClient> Clients { get; private set; } = new List<ServerClient>();
 		public TcpListener TcpListener { get; private set; }
 		public IFirewall Firewall { get; private set; }
+		public PacketEntityManager PacketEntityManager { get; private set; } = new PacketEntityManager();
 
-		public delegate void CallbackReceive(BasePacket packet);
+		public delegate void CallbackReceive(Packet packet);
 		public event CallbackReceive CallbackReceiveEvent;
 
 		public delegate void CallbackConnectClient(ServerClient client);
@@ -82,8 +84,14 @@ namespace EasyTCP
 			Clients.Remove(serverClient);
 		}
 
-		private void Receive(BasePacket packet)
+		private void Receive(Packet packet)
 		{
+			if (packet.Header.Type == PacketType.None &&
+				PacketEntityManager.IsEntity(packet.Header.TypePacket) != 0)
+			{
+				PacketEntityManager.ReceivePacket(packet, Serialization);
+				return;
+			}
 			CallbackReceiveEvent?.Invoke(packet);
 		}
 	}

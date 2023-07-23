@@ -77,19 +77,6 @@ namespace EasyTCP.Serialize
 			}
 		}
 	}
-	[Serializable]
-	public class SecurePacket : BasePacket
-	{
-		public SecurePacket()
-		{
-			Type = TypePacket.Serialize;
-		}
-		public SecureAES AES { get; set; } = null;
-		public override string ToString()
-		{
-			return $"{base.ToString()} | {BitConverter.ToString(AES.AES_KEY)}";
-		}
-	}
 	public class SecureSerialize : ISerialization
 	{
 		private SecureAES AES = new SecureAES();
@@ -150,7 +137,7 @@ namespace EasyTCP.Serialize
 				return;
 			AES.CreateKey();
 
-			var info = Connection.SendAndWaitUnlimited(new SecurePacket() { AES = AES });
+			var info = Connection.SendAndWaitUnlimited(AES);
 			Initial = true;
 			while (info.Packet == null)
 			{
@@ -166,18 +153,18 @@ namespace EasyTCP.Serialize
 				Console.WriteLine("UPDATE KEYS");
 				var aes = new SecureAES();
 				aes.CreateKey();
-				Connection.Send(new SecurePacket() { AES = aes }).Wait();
+				Connection.Send(aes, HeaderPacket.Create(PacketType.Serialize)).Wait();
 				AES = aes;
 			}
 			Console.WriteLine("END TimerUpdate");
 		}
-		private void Connection_CallbackReceiveEvent(Packets.BasePacket packet)
+		private void Connection_CallbackReceiveEvent(Packets.Packet packet)
 		{
-			if (packet.Type == Packets.TypePacket.Serialize)
+			if (packet.Header.Type == PacketType.Serialize)
 			{
-				AES = ((SecurePacket)packet).AES;
+				AES = FromRaw<SecureAES>(packet.Bytes);
 				Initial = true;
-				packet.Answer(new Packet() { UID = packet.UID });
+				//packet.Answer(new Packet() { UID = packet.UID });
 			}
 		}
 		private byte[] EncryptWithRSA(byte[] data, byte[] publicKey)
@@ -222,6 +209,11 @@ namespace EasyTCP.Serialize
 
 				return decryptedData;
 			}
+		}
+
+		public object FromRaw(byte[] data, Type type)
+		{
+			throw new NotImplementedException();
 		}
 	}
 }

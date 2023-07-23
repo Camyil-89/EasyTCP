@@ -4,7 +4,7 @@ using EasyTCP.Packets;
 namespace TestClient.Examples.Simple
 {
 	[Serializable]
-	internal class MyPacket : EasyTCP.Packets.BasePacket
+	internal class MyPacket
 	{
 		public string Message = "Hello server!";
 		public override string ToString()
@@ -14,7 +14,7 @@ namespace TestClient.Examples.Simple
 	}
 
 	[Serializable]
-	internal class BigPacket : BasePacket
+	internal class BigPacket
 	{
 		public byte[] Bytes = new byte[1024 * 1024 * 25]; // 25 mb
 
