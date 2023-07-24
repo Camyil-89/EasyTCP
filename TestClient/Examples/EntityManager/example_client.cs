@@ -62,7 +62,7 @@ namespace TestClient.Examples.EntityManager
 			client.Connect("localhost", 2020);
 
 			Console.WriteLine(client.SendAndWaitResponse<ConnectionStatusPacket>(new ConnectPacket() { Login = "Admin", Password = "123" }));
-			client.Send(new ConnectPacket() { Login = "Ivan", Password = "321" });
+			client.Send(new ConnectPacket() { Login = "Ivan", Password = "321" }); // отправляет пакет и не ждет ответа
 			client.Send(new MessagePacket() { Message = "Disconnect, bye!" });
 			client.Send(new NotRegistrationPacket() { Message = "Примет, я не зарешестрированный класс!" });
 			Thread.Sleep(3000); // ждем все ответы от сервера.

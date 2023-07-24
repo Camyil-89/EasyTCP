@@ -24,7 +24,7 @@ namespace TestServer.Examples.EntityManager
 		}
 
 		/// <summary>
-		/// Сюда попадают все пакеты которые не были разегестрированны.
+		/// Сюда попадают все пакеты которые не были зарегистрированы.
 		/// </summary>
 		/// <param name="packet"></param>
 		private void Server_CallbackReceiveEvent(EasyTCP.Packets.Packet packet)
