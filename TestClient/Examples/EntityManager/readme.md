@@ -61,7 +61,7 @@ PacketEntityManager - класс позволяющий регистрирова
 			client.Connect("localhost", 2020);
 
 			Console.WriteLine(client.SendAndWaitResponse<ConnectionStatusPacket>(new ConnectPacket() { Login = "Admin", Password = "123" }));
-			client.Send(new ConnectPacket() { Login = "Ivan", Password = "321" });
+			client.Send(new ConnectPacket() { Login = "Ivan", Password = "321" }); // отправляет пакет и не ждет ответа
 			client.Send(new MessagePacket() { Message = "Disconnect, bye!" });
 			client.Send(new NotRegistrationPacket() { Message = "Примет, я не зарешестрированный класс!" });
 			Thread.Sleep(3000); // ждем все ответы от сервера.
@@ -103,7 +103,7 @@ public class example_server
 		}
 
 		/// <summary>
-		/// Сюда попадают все пакеты которые не были разегестрированны.
+		/// Сюда попадают все пакеты которые не были зарегистрированы.
 		/// </summary>
 		/// <param name="packet"></param>
 		private void Server_CallbackReceiveEvent(EasyTCP.Packets.Packet packet)
