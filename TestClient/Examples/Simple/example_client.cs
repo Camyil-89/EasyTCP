@@ -29,7 +29,7 @@ namespace TestClient.Examples.Simple
 		{
 			EasyTCP.Client client = new EasyTCP.Client();
 			client.Connect("localhost", 2020);
-			var answer = client.SendAndWaitResponse(new MyPacket());
+			var answer = client.SendAndWaitResponse<MyPacket>(new MyPacket());
 			Console.WriteLine($"[FROM SERVER] {answer}");
 
 			foreach (var response_from_server in client.SendAndReceiveInfo(new BigPacket()))

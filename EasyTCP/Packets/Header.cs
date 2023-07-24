@@ -12,6 +12,7 @@ namespace EasyTCP.Packets
 		ReceiveInfo = 3,
 		FirewallBlock = 4,
 		Serialize = 5,
+		Abort = 6,
 	}
 	public enum PacketMode: byte
 	{
@@ -44,9 +45,16 @@ namespace EasyTCP.Packets
 
 		public static HeaderPacket CreateFirewallAnswer(int uid)
 		{
-			var x = Create(PacketType.None, PacketMode.Hidden);
+			var x = Create(PacketType.FirewallBlock, PacketMode.Hidden);
 			x.UID = uid;
 			return x;
+		}
+
+		public void NewPacket()
+		{
+			Guid guid = Guid.NewGuid();
+			byte[] bytes = guid.ToByteArray();
+			UID = BitConverter.ToInt32(bytes, 0);
 		}
 	}
 }

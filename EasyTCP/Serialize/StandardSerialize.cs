@@ -41,6 +41,19 @@ namespace EasyTCP.Serialize
 				return formatter.Deserialize(memoryStream);
 			}
 		}
+		/// <summary>
+		/// работает только с классами!!!
+		/// </summary>
+		/// <param name="data"></param>
+		/// <returns></returns>
+		public object FromRaw(byte[] data)
+		{
+			using (MemoryStream memoryStream = new MemoryStream(data))
+			{
+				BinaryFormatter formatter = new BinaryFormatter();
+				return formatter.Deserialize(memoryStream);
+			}
+		}
 
 		public void InitConnection(Connection connection)
 		{

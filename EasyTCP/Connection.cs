@@ -16,7 +16,6 @@ namespace EasyTCP
 {
 	public class WaitInfoPacket
 	{
-		public DateTime Time { get; set; } = DateTime.Now;
 		public bool IsReadFromServer { get; set; } = false;
 		public int Timeout { get; set; }
 		public Packet Packet { get; set; } = null;
@@ -34,6 +33,7 @@ namespace EasyTCP
 	{
 		private Dictionary<int, WaitInfoPacket> WaitPackets = new Dictionary<int, WaitInfoPacket>();
 		private byte[] Buffer;
+		public ServerClient ServerClient { get; set; } = null;
 		public NetworkStream NetworkStream { get; set; }
 		public TypeConnection Mode { get; private set; } = TypeConnection.Client;
 		public ISerialization Serialization { get; set; } = new StandardSerialize();
@@ -107,17 +107,17 @@ namespace EasyTCP
 						readData = task.Result;
 						readData.CallbackAnswerEvent += ReadData_CallbackAnswerEvent;
 						Statistics.ReceivedPackets++;
-
-						//if (Firewall != null && Firewall.ValidatePacket(packet) == false)
-						//{
-						//	packet.Answer(new Firewall.PacketFirewall() { Answer = Firewall.ValidatePacketAnswer(packet), UID = packet.UID });
-						//	return;
-						//}
+						if (readData.Header.Type == PacketType.Abort)
+						{
+							NetworkStream.Close();
+							NetworkStream = null;
+							return;
+						}
 						if (WaitPackets.ContainsKey(readData.Header.UID))
 						{
 							if (readData.Header.Type == PacketType.RSTStopwatch)
 							{
-								Console.WriteLine($"[RST] {readData.Header.Type};{readData.Header.UID}");
+								//Console.WriteLine($"[RST] {readData.Header.Type};{readData.Header.UID}");
 								WaitPackets[readData.Header.UID].Stopwatch.Restart();
 								WaitPackets[readData.Header.UID].RSTStopwatch = true;
 							}
@@ -132,14 +132,13 @@ namespace EasyTCP
 						}
 						else
 						{
-							//Task.Run(() => { CallbackReceiveSerializationEvent?.Invoke(packet); });
+							Task.Run(() => { CallbackReceiveSerializationEvent?.Invoke(readData); });
 							Task.Run(() => { CallbackReceiveEvent?.Invoke(readData); });
 						}
 					});
 				}
-				catch (Exception ex) { Console.WriteLine(ex); Thread.Sleep(25); }
+				catch (Exception ex) { Thread.Sleep(25); }
 			}
-			Console.WriteLine("END [RXHandler]");
 		}
 
 		private void ReadData_CallbackAnswerEvent(Packet packet)
@@ -184,6 +183,7 @@ namespace EasyTCP
 			}
 			int bytes_read_to_send_info = 0;
 			var read_data = new Packet() { Header = header };
+			read_data.Client = ServerClient;
 			HeaderPacket header_rec_info = HeaderPacket.Create(PacketType.ReceiveInfo, PacketMode.ReceiveInfo);
 			header_rec_info.UID = header.UID;
 			ReceiveInfo receiveInfo = new ReceiveInfo();
@@ -248,7 +248,19 @@ namespace EasyTCP
 				return null;
 			}
 		}
-
+		public void Abort()
+		{
+			var header = HeaderPacket.Create(PacketType.Abort);
+			Send((byte)0, header).Wait();
+			NetworkStream.Close();
+			NetworkStream = null;
+		}
+		public void Send(object data, PacketType type = PacketType.None, PacketMode mode = PacketMode.Hidden, byte type_packet = 0)
+		{
+			var header = HeaderPacket.Create(type, mode);
+			header.TypePacket = type_packet;
+			Send(data, header).Wait();
+		}
 		public WaitInfoPacket SendAndWaitUnlimited(object data, PacketType type = PacketType.None, PacketMode mode = PacketMode.Hidden, byte type_packet = 0)
 		{
 			var wait_info_packet = new WaitInfoPacket() { };

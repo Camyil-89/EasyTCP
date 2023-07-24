@@ -15,7 +15,7 @@ namespace TestServer.Examples.Simple
 			server.Start(2020);
 			server.CallbackConnectClientEvent += Server_CallbackConnectClientEvent;
 			server.CallbackDisconnectClientEvent += Server_CallbackDisconnectClientEvent;
-			//server.CallbackReceiveEvent += Server_CallbackReceiveEvent;
+			server.CallbackReceiveEvent += Server_CallbackReceiveEvent;
 		}
 
 		private void Server_CallbackReceiveEvent(EasyTCP.Packets.Packet packet)

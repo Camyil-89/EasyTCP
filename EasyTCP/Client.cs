@@ -85,7 +85,13 @@ namespace EasyTCP
 			}
 			catch { return false; }
 		}
-
+		public void Close()
+		{
+			Connection.Abort();
+			TCPClient.Close();
+			TCPClient.Dispose();
+			TCPClient = null;
+		}
 		private void Connection_CallbackReceiveEvent(Packet packet)
 		{
 			if (packet.Header.Type == PacketType.None &&
@@ -113,7 +119,8 @@ namespace EasyTCP
 				{
 					if (info.Packet.Header.Type == PacketType.FirewallBlock)
 					{
-						throw new ExceptionEasyTCPFirewall("");
+						var answer = Connection.Serialization.FromRaw<PacketFirewall>(info.Packet.Bytes);
+						throw new ExceptionEasyTCPFirewall($"code: {answer.Code} | {answer.Answer}");
 					}
 					yield return new ResponseInfo<T>() { Packet = Connection.Serialization.FromRaw<T>(info.Packet.Bytes), Info = last_rec_info };
 					break;
@@ -135,12 +142,12 @@ namespace EasyTCP
 			if (info.Packet == null)
 				throw new ExceptionEasyTCPTimeout($"Timeout wait response! {stopwatch.ElapsedMilliseconds} \\ {timeout}");
 		}
-		public T SendAndWaitResponse<T>(T obj, int timeout = int.MaxValue)
+		public T SendAndWaitResponse<T>(object obj, int timeout = int.MaxValue)
 		{
 			Stopwatch stopwatch = Stopwatch.StartNew();
 
 
-			var info = Connection.SendAndWaitUnlimited(obj, PacketType.None, PacketMode.Hidden, PacketEntityManager.IsEntity(typeof(T)));
+			var info = Connection.SendAndWaitUnlimited(obj, PacketType.None, PacketMode.Hidden, PacketEntityManager.IsEntity(obj.GetType()));
 			while (stopwatch.ElapsedMilliseconds < timeout)
 			{
 				if (TCPClient.Connected == false || Connection.NetworkStream == null)
@@ -152,6 +159,14 @@ namespace EasyTCP
 				Thread.Sleep(1);
 			}
 			throw new ExceptionEasyTCPTimeout($"Timeout wait response! {stopwatch.ElapsedMilliseconds} \\ {timeout}");
+		}
+		public void Send(object obj)
+		{
+			if (TCPClient.Connected == false || Connection.NetworkStream == null)
+			{
+				throw new ExceptionEasyTCPAbortConnect("Lost connect with server!");
+			}
+			Connection.Send(obj, PacketType.None, PacketMode.Hidden, PacketEntityManager.IsEntity(obj.GetType()));
 		}
 	}
 }

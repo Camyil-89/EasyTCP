@@ -215,5 +215,10 @@ namespace EasyTCP.Serialize
 		{
 			throw new NotImplementedException();
 		}
+
+		public object FromRaw(byte[] data)
+		{
+			throw new NotImplementedException();
+		}
 	}
 }

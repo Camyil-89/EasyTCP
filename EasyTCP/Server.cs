@@ -41,6 +41,20 @@ namespace EasyTCP
 			TcpListener.Start();
 			Task.Run(Listener);
 		}
+		public void Stop()
+		{
+			if (TcpListener != null)
+				TcpListener.Stop();
+			TcpListener = null;
+			DisconnectAllClient();
+		}
+		public void DisconnectAllClient()
+		{
+			foreach (var i in Clients)
+			{
+				i.Connection.Abort();
+			}
+		}
 		private void Listener()
 		{
 			while (TcpListener != null)
@@ -65,6 +79,7 @@ namespace EasyTCP
 			ServerClient serverClient = new ServerClient();
 
 			Connection connection = new Connection(client.GetStream(), TypeConnection.Server);
+			connection.ServerClient = serverClient;
 			connection.CallbackReceiveEvent += Receive;
 			connection.Firewall = Firewall;
 			connection.Serialization = Serialization;
@@ -75,15 +90,23 @@ namespace EasyTCP
 
 			Clients.Add(serverClient);
 			CallbackConnectClientEvent?.Invoke(serverClient);
-			while (client != null && client.Connected && connection.NetworkStream != null)
+			while (client != null && client.Connected && serverClient.Connection != null && serverClient.Connection.NetworkStream != null)
 			{
 				Thread.Sleep(250);
 			}
-
+			client.Close();
+			client.Dispose();
 			CallbackDisconnectClientEvent?.Invoke(serverClient);
 			Clients.Remove(serverClient);
 		}
+		public void Answer(Packet packet, object obj)
+		{
+			packet.Header.TypePacket = PacketEntityManager.IsEntity(obj.GetType());
 
+			packet.Bytes = Serialization.Raw(obj);
+
+			packet.Answer(packet);
+		}
 		private void Receive(Packet packet)
 		{
 			if (packet.Header.Type == PacketType.None &&

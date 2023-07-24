@@ -1,9 +1,15 @@
 ﻿
 
+using EasyTCP.Serialize;
+
 namespace EasyTCP.Packets
 {
 	public class Packet
 	{
+		/// <summary>
+		/// Только если вы сервер, тут будет клиент.
+		/// </summary>
+		public ServerClient Client { get; set; } = null;
 		public HeaderPacket Header;
 		public byte[] Bytes;
 

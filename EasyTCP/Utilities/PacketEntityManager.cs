@@ -40,8 +40,8 @@ namespace EasyTCP.Utilities
 		{
 			if (PacketObservers.ContainsKey(packet.Header.TypePacket))
 			{
-				var x = ((PacketEntity)PacketObservers[packet.Header.TypePacket]);
-				x.Call(serialization, packet);
+				var entity = ((PacketEntity)PacketObservers[packet.Header.TypePacket]);
+				entity.Call(serialization, packet);
 			}
 		}
 	}
