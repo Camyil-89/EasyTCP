@@ -48,7 +48,7 @@
 	}
 ```
 ## Сервер
-![image](https://github.com/Camyil-89/EasyTCP/assets/76705837/8cee742c-5dad-485e-b003-556688c6dca4)
+![image](https://github.com/Camyil-89/EasyTCP/assets/76705837/6d24c50a-be02-44b4-a11a-8e19652e5759)
 ```C#
 internal class example_server
 	{
