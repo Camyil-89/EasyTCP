@@ -1,5 +1,6 @@
 # Broadcast
 Пример бродкаст рассылки.
+
 ![image](https://github.com/Camyil-89/EasyTCP/assets/76705837/4994f1af-0747-40b2-8d3d-776e9c14b012)
 
 # Клиент
