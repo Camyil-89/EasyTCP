@@ -85,8 +85,11 @@ namespace TestServer
 	{
 		static void Main(string[] args)
 		{
-			new Examples.EntityManager.example_server().Example();
+			//new Examples.EntityManager.example_server().Example();
 			//new Examples.Simple.example_server().Example();
+			//new Examples.Ssl.example_server().Example();
+			new Examples.Serialize.example_server().Example();
+			
 			//EasyTCP.Server server = new EasyTCP.Server();
 			//server.CallbackReceiveEvent += Server_CallbackReceiveEvent; ;
 			//server.CallbackConnectClientEvent += Server_CallbackConnectClientEvent;

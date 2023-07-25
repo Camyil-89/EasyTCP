@@ -1,53 +1,12 @@
-﻿using EasyTCP.Firewall;
-using EasyTCP.Packets;
+﻿using EasyTCP.Packets;
 using EasyTCP.Serialize;
 using EasyTCP.Utilities;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
+using System.Security.Cryptography.X509Certificates;
 
 namespace EasyTCP
 {
-	public class ExceptionEasyTCPFirewall : Exception
-	{
-		public ExceptionEasyTCPFirewall(string message)
-		: base(message)
-		{
-		}
-
-		public ExceptionEasyTCPFirewall(string message, Exception inner)
-			: base(message, inner)
-		{
-		}
-	}
-	public class ExceptionEasyTCPAbortConnect : Exception
-	{
-		public ExceptionEasyTCPAbortConnect(string message)
-		: base(message)
-		{
-		}
-
-		public ExceptionEasyTCPAbortConnect(string message, Exception inner)
-			: base(message, inner)
-		{
-		}
-	}
-	public class ExceptionEasyTCPTimeout : Exception
-	{
-		public ExceptionEasyTCPTimeout(string message)
-		: base(message)
-		{
-		}
-
-		public ExceptionEasyTCPTimeout(string message, Exception inner)
-			: base(message, inner)
-		{
-		}
-	}
 	public class ResponseInfo<T>
 	{
 		public T Packet { get; set; }
@@ -65,6 +24,9 @@ namespace EasyTCP
 
 	public class Client
 	{
+		private X509Certificate Certificate;
+		private bool IsSsl = false;
+		private bool IsCheckCert = true;
 		public Connection Connection { get; private set; }
 		public PacketEntityManager PacketEntityManager { get; private set; } = new PacketEntityManager();
 		private TcpClient TCPClient { get; set; }
@@ -75,7 +37,10 @@ namespace EasyTCP
 				TCPClient = new TcpClient();
 				TCPClient.Connect(host, port);
 				Connection = new Connection(TCPClient.GetStream(), TypeConnection.Client, 700, 700);
-
+				Connection.ServerName = host;
+				Connection.PortServer = port;
+				if (IsSsl)
+					Connection.EnableSsl(Certificate, IsCheckCert);
 				if (serialization != null)
 					Connection.Serialization = serialization;
 
@@ -92,6 +57,13 @@ namespace EasyTCP
 			TCPClient.Dispose();
 			TCPClient = null;
 		}
+		private void CheckConnection()
+		{
+			if (TCPClient.Connected == false || Connection == null || Connection.IsWork == false)
+			{
+				throw new ExceptionEasyTCPAbortConnect("Lost connect with server!");
+			}
+		}
 		private void Connection_CallbackReceiveEvent(Packet packet)
 		{
 			if (packet.Header.Type == PacketType.None &&
@@ -101,9 +73,15 @@ namespace EasyTCP
 				return;
 			}
 		}
-
+		public void EnableSsl(X509Certificate certificate, bool IsValidateCertificate)
+		{
+			IsSsl = true;
+			Certificate = certificate;
+			IsCheckCert = IsValidateCertificate;
+		}
 		public IEnumerable<ResponseInfo<T>> SendAndReceiveInfo<T>(T obj, int timeout = int.MaxValue)
 		{
+			CheckConnection();
 			Stopwatch stopwatch = Stopwatch.StartNew();
 			var info = Connection.SendAndWaitUnlimited(obj, PacketType.None, PacketMode.Info);
 			ReceiveInfo last_rec_info = new ReceiveInfo();
@@ -111,7 +89,7 @@ namespace EasyTCP
 			int count_client = 0;
 			while (stopwatch.ElapsedMilliseconds < timeout)
 			{
-				if (TCPClient.Connected == false || Connection.NetworkStream == null)
+				if (TCPClient.Connected == false || Connection.IsWork == false)
 				{
 					throw new ExceptionEasyTCPAbortConnect("Lost connect with server!");
 				}
@@ -144,13 +122,14 @@ namespace EasyTCP
 		}
 		public T SendAndWaitResponse<T>(object obj, int timeout = int.MaxValue)
 		{
+			CheckConnection();
 			Stopwatch stopwatch = Stopwatch.StartNew();
 
 
 			var info = Connection.SendAndWaitUnlimited(obj, PacketType.None, PacketMode.Hidden, PacketEntityManager.IsEntity(obj.GetType()));
 			while (stopwatch.ElapsedMilliseconds < timeout)
 			{
-				if (TCPClient.Connected == false || Connection.NetworkStream == null)
+				if (TCPClient.Connected == false || Connection.IsWork == false)
 				{
 					throw new ExceptionEasyTCPAbortConnect("Lost connect with server!");
 				}
@@ -162,10 +141,7 @@ namespace EasyTCP
 		}
 		public void Send(object obj)
 		{
-			if (TCPClient.Connected == false || Connection.NetworkStream == null)
-			{
-				throw new ExceptionEasyTCPAbortConnect("Lost connect with server!");
-			}
+			CheckConnection();
 			Connection.Send(obj, PacketType.None, PacketMode.Hidden, PacketEntityManager.IsEntity(obj.GetType()));
 		}
 	}

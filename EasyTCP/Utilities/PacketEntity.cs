@@ -12,7 +12,7 @@ namespace EasyTCP.Utilities
 	{
 		public byte Type { get; init; } = 0;
 		public Type ObjType { get; init; }
-		public delegate void CallbackReceive(object Packet, Packet RawPacket);
+		public delegate void CallbackReceive(object packet, Packet rawPacket);
 		public event CallbackReceive CallbackReceiveEvent;
 
 		public void Call(ISerialization serialization, Packet packet)

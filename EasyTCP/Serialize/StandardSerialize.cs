@@ -55,11 +55,6 @@ namespace EasyTCP.Serialize
 			}
 		}
 
-		public void InitConnection(Connection connection)
-		{
-			
-		}
-
 		public byte[] Raw(object obj)
 		{
             if (obj.GetType().IsValueType)
@@ -80,5 +75,10 @@ namespace EasyTCP.Serialize
                 return memoryStream.ToArray();
             }
         }
-    }
+
+		public void InitConnection(Connection connection)
+		{
+
+		}
+	}
 }

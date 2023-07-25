@@ -1,6 +1,7 @@
 ﻿
 
 using EasyTCP.Serialize;
+using System.Net.Sockets;
 
 namespace EasyTCP.Packets
 {
@@ -25,6 +26,12 @@ namespace EasyTCP.Packets
 			}
 			else
 				CallbackAnswerEvent?.Invoke(packet);
+		}
+		public virtual void AnswerNull()
+		{
+			var packet = new Packet();
+			packet.Header = Header;
+			CallbackAnswerEvent?.Invoke(packet);
 		}
 	}
 }

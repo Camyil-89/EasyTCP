@@ -3,7 +3,9 @@ using EasyTCP.Serialize;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
@@ -29,12 +31,29 @@ namespace EasyTCP
 		Client = 0,
 		Server = 1,
 	}
+	public enum TypeStreamConnection : byte
+	{
+		NotEncrypted = 0,
+		Encrypted = 1,
+	}
 	public class Connection
 	{
 		private Dictionary<int, WaitInfoPacket> WaitPackets = new Dictionary<int, WaitInfoPacket>();
-		private byte[] Buffer;
+		private NetworkStream NetworkStream { get; set; }
+		private SslStream SslStream { get; set; } = null;
+		private byte[] Buffer { get; set; }
+
+		/// <summary>
+		/// Client
+		/// </summary>
+		public string ServerName { get; set; }
+		/// <summary>
+		/// Client
+		/// </summary>
+		public int PortServer { get; set; }
+		public TypeStreamConnection TypeStreamConnection { get; set; }
+		public bool IsWork => NetworkStream != null || SslStream != null;
 		public ServerClient ServerClient { get; set; } = null;
-		public NetworkStream NetworkStream { get; set; }
 		public TypeConnection Mode { get; private set; } = TypeConnection.Client;
 		public ISerialization Serialization { get; set; } = new StandardSerialize();
 		public Firewall.IFirewall Firewall { get; set; } = null;
@@ -53,7 +72,37 @@ namespace EasyTCP
 			NetworkStream.WriteTimeout = write_timeout;
 			Mode = mode;
 		}
+		public void EnableSsl(X509Certificate certificate, bool CheckCert = true)
+		{
+			X509Certificate2Collection clientCertificates = new X509Certificate2Collection();
+			clientCertificates.Add(certificate);
+			TypeStreamConnection = TypeStreamConnection.Encrypted;
+			if (CheckCert)
+				SslStream = new SslStream(NetworkStream);
+			else
+				SslStream = new SslStream(NetworkStream, false, (object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors) => true);
+			SslStream.ReadTimeout = NetworkStream.ReadTimeout;
+			SslStream.WriteTimeout = NetworkStream.WriteTimeout;
+			if (Mode == TypeConnection.Client)
+			{
+				SslStream.AuthenticateAsClient(ServerName, clientCertificates, System.Security.Authentication.SslProtocols.Tls12
+					| System.Security.Authentication.SslProtocols.Tls |
+					System.Security.Authentication.SslProtocols.Tls11 |
+					System.Security.Authentication.SslProtocols.Tls13, false);
+				if (SslStream.IsAuthenticated == false)
+				{
+					throw new ExceptionEasyTCPSslNotAuthenticated("Ssl not Authenticated");
+				}
 
+			}
+			else
+			{
+				SslStream.AuthenticateAsServer(certificate, false, System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls |
+					System.Security.Authentication.SslProtocols.Tls11 |
+					System.Security.Authentication.SslProtocols.Tls13, false);
+			}
+
+		}
 		public void Init()
 		{
 			Buffer = new byte[1024 * 64]; // 64 kb
@@ -68,6 +117,8 @@ namespace EasyTCP
 		}
 		public async Task WriteStream(byte[] data, HeaderPacket header)
 		{
+			if (data == null)
+				data = new byte[0];
 			header.DataSize = data.LongLength;
 			int structSize = Marshal.SizeOf(header);
 			byte[] struct_bytes = new byte[structSize];
@@ -83,13 +134,21 @@ namespace EasyTCP
 			data.CopyTo(result, struct_bytes.Length);
 			try
 			{
-				await NetworkStream.WriteAsync(result);
-				await NetworkStream.FlushAsync();
+				if (TypeStreamConnection == TypeStreamConnection.NotEncrypted)
+				{
+					await NetworkStream.WriteAsync(result);
+					await NetworkStream.FlushAsync();
+				}
+				else
+				{
+					await SslStream.WriteAsync(result);
+					await SslStream.FlushAsync();
+				}
 				Statistics.SentPackets++;
 				Statistics.SentBytes += result.LongLength;
-				//Console.WriteLine($"WR: {data.Length} | {result.Length}");
+				//Console.WriteLine($"TX: {data.Length} | {result.Length} ({header.UID})");
 			}
-			catch (Exception ex) { }
+			catch (Exception ex) { Console.WriteLine(ex); }
 		}
 		private async Task RXHandler()
 		{
@@ -113,6 +172,10 @@ namespace EasyTCP
 							NetworkStream = null;
 							return;
 						}
+						if (readData.Header.Type == PacketType.Serialize)
+						{
+							Task.Run(() => { CallbackReceiveSerializationEvent?.Invoke(readData); });
+						}
 						if (WaitPackets.ContainsKey(readData.Header.UID))
 						{
 							if (readData.Header.Type == PacketType.RSTStopwatch)
@@ -132,7 +195,6 @@ namespace EasyTCP
 						}
 						else
 						{
-							Task.Run(() => { CallbackReceiveSerializationEvent?.Invoke(readData); });
 							Task.Run(() => { CallbackReceiveEvent?.Invoke(readData); });
 						}
 					});
@@ -154,7 +216,12 @@ namespace EasyTCP
 		{
 			int structSize = Marshal.SizeOf(typeof(HeaderPacket));
 			byte[] headerBuffer = new byte[structSize];
-			int bytesRead = await NetworkStream.ReadAsync(headerBuffer, 0, structSize).ConfigureAwait(false);
+
+			int bytesRead = 0;
+			if (TypeStreamConnection == TypeStreamConnection.NotEncrypted)
+				bytesRead = await NetworkStream.ReadAsync(headerBuffer, 0, structSize).ConfigureAwait(false);
+			else
+				bytesRead = await SslStream.ReadAsync(headerBuffer, 0, structSize).ConfigureAwait(false);
 
 			Statistics.ReceivedBytes += bytesRead;
 			if (bytesRead < structSize)
@@ -167,6 +234,7 @@ namespace EasyTCP
 			HeaderPacket header = (HeaderPacket)Marshal.PtrToStructure(ptr, typeof(HeaderPacket));
 			Marshal.FreeHGlobal(ptr);
 
+			//Console.WriteLine($"RX: {header.DataSize} | {header.Type} | {header.Mode} | {header.TypePacket} | ({header.UID})");
 			long totalBytesRead = 0;
 
 			if (Firewall != null && Firewall.ValidateHeader(header) == false)
@@ -175,7 +243,10 @@ namespace EasyTCP
 				while (totalBytesRead < header.DataSize)
 				{
 					var buffer_size = (int)(Buffer.Length <= header.DataSize - totalBytesRead ? Buffer.Length : header.DataSize - totalBytesRead);
-					bytesRead = await NetworkStream.ReadAsync(Buffer, 0, buffer_size).ConfigureAwait(false);
+					if (TypeStreamConnection == TypeStreamConnection.NotEncrypted)
+						bytesRead = await NetworkStream.ReadAsync(Buffer, 0, buffer_size).ConfigureAwait(false);
+					else
+						bytesRead = await SslStream.ReadAsync(Buffer, 0, buffer_size).ConfigureAwait(false);
 					totalBytesRead += bytesRead;
 					Statistics.ReceivedBytes += bytesRead;
 				}
@@ -193,7 +264,10 @@ namespace EasyTCP
 				while (totalBytesRead < header.DataSize)
 				{
 					var buffer_size = (int)(Buffer.LongLength <= header.DataSize - totalBytesRead ? Buffer.Length : header.DataSize - totalBytesRead);
-					bytesRead = await NetworkStream.ReadAsync(Buffer, 0, buffer_size).ConfigureAwait(false);
+					if (TypeStreamConnection == TypeStreamConnection.NotEncrypted)
+						bytesRead = await NetworkStream.ReadAsync(Buffer, 0, buffer_size).ConfigureAwait(false);
+					else
+						bytesRead = await SslStream.ReadAsync(Buffer, 0, buffer_size).ConfigureAwait(false);
 					totalBytesRead += bytesRead;
 					bytes_read_to_send_info += bytesRead;
 					ms.Write(Buffer, 0, bytesRead);
@@ -251,7 +325,7 @@ namespace EasyTCP
 		public void Abort()
 		{
 			var header = HeaderPacket.Create(PacketType.Abort);
-			Send((byte)0, header).Wait();
+			Send(null, header).Wait();
 			NetworkStream.Close();
 			NetworkStream = null;
 		}

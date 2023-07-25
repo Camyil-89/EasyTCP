@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using EasyTCP.Packets;
 using EasyTCP.Firewall;
 using EasyTCP.Utilities;
+using System.Security.Cryptography.X509Certificates;
 
 namespace EasyTCP
 {
@@ -15,9 +16,14 @@ namespace EasyTCP
 	{
 		public Connection Connection { get; set; }
 		public TcpClient TCP { get; set; }
+		public string IpPort { get; set; }
 	}
 	public class Server
 	{
+		private X509Certificate Certificate;
+		private bool IsSsl = false;
+		private bool IsCheckCert = true;
+
 		public Serialize.ISerialization Serialization { get; private set; } = new Serialize.StandardSerialize();
 		public List<ServerClient> Clients { get; private set; } = new List<ServerClient>();
 		public TcpListener TcpListener { get; private set; }
@@ -55,6 +61,11 @@ namespace EasyTCP
 				i.Connection.Abort();
 			}
 		}
+		public void EnableSsl(X509Certificate certificate)
+		{
+			IsSsl = true;
+			Certificate = certificate;
+		}
 		private void Listener()
 		{
 			while (TcpListener != null)
@@ -77,23 +88,31 @@ namespace EasyTCP
 		private void HandlerClient(TcpClient client)
 		{
 			ServerClient serverClient = new ServerClient();
-
-			Connection connection = new Connection(client.GetStream(), TypeConnection.Server);
-			connection.ServerClient = serverClient;
-			connection.CallbackReceiveEvent += Receive;
-			connection.Firewall = Firewall;
-			connection.Serialization = Serialization;
-			connection.Init();
-
-			serverClient.Connection = connection;
 			serverClient.TCP = client;
-
-			Clients.Add(serverClient);
-			CallbackConnectClientEvent?.Invoke(serverClient);
-			while (client != null && client.Connected && serverClient.Connection != null && serverClient.Connection.NetworkStream != null)
+			serverClient.IpPort = client.Client.RemoteEndPoint.ToString();
+			try
 			{
-				Thread.Sleep(250);
-			}
+				Connection connection = new Connection(client.GetStream(), TypeConnection.Server);
+				if (IsSsl)
+				{
+					connection.EnableSsl(Certificate, IsCheckCert);
+				}
+				connection.ServerClient = serverClient;
+				connection.CallbackReceiveEvent += Receive;
+				connection.Firewall = Firewall;
+				connection.Serialization = Serialization;
+				connection.Init();
+
+				serverClient.Connection = connection;
+			
+
+				Clients.Add(serverClient);
+				CallbackConnectClientEvent?.Invoke(serverClient);
+				while (client != null && client.Connected && serverClient.Connection != null && serverClient.Connection.IsWork == true)
+				{
+					Thread.Sleep(250);
+				}
+			} catch (Exception e) { }
 			client.Close();
 			client.Dispose();
 			CallbackDisconnectClientEvent?.Invoke(serverClient);

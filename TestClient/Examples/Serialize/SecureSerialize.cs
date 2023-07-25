@@ -1,14 +1,11 @@
-﻿using EasyTCP.Packets;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
+﻿using EasyTCP;
+using EasyTCP.Packets;
+using EasyTCP.Serialize;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace EasyTCP.Serialize
+namespace TestClient.Examples.Serialize
 {
 	[Serializable]
 	public class SecureAES
@@ -80,53 +77,11 @@ namespace EasyTCP.Serialize
 	public class SecureSerialize : ISerialization
 	{
 		private SecureAES AES = new SecureAES();
+		private SecureAES LastAES = new SecureAES();
 		public bool Initial { get; private set; } = false;
 		private Connection Connection { get; set; }
 		public byte[] PublicKey { get; set; } = new byte[0];
 		public byte[] PrivateKey { get; set; } = new byte[0];
-		public T FromRaw<T>(byte[] data)
-		{
-			if (Initial)
-			{
-				using (MemoryStream memoryStream = new MemoryStream(AES.Decrypt(data)))
-				{
-					BinaryFormatter formatter = new BinaryFormatter();
-					return (T)formatter.Deserialize(memoryStream);
-				}
-			}
-			else
-			{
-				using (MemoryStream memoryStream = new MemoryStream(DecryptWithRSA(data, PrivateKey)))
-				{
-					BinaryFormatter formatter = new BinaryFormatter();
-					return (T)formatter.Deserialize(memoryStream);
-				}
-			}
-
-		}
-		public byte[] Raw(object obj)
-		{
-			Console.WriteLine(obj);
-			if (Initial)
-			{
-				using (MemoryStream memoryStream = new MemoryStream())
-				{
-					BinaryFormatter formatter = new BinaryFormatter();
-					formatter.Serialize(memoryStream, obj);
-					return AES.Encrypt(memoryStream.ToArray());
-				}
-			}
-			else
-			{
-				using (MemoryStream memoryStream = new MemoryStream())
-				{
-					BinaryFormatter formatter = new BinaryFormatter();
-					formatter.Serialize(memoryStream, obj);
-					return EncryptWithRSA(memoryStream.ToArray(), PublicKey);
-				}
-			}
-
-		}
 
 
 		public void InitConnection(Connection connection)
@@ -136,8 +91,9 @@ namespace EasyTCP.Serialize
 			if (connection.Mode == TypeConnection.Server)
 				return;
 			AES.CreateKey();
+			LastAES = AES;
 
-			var info = Connection.SendAndWaitUnlimited(AES);
+			var info = Connection.SendAndWaitUnlimited(AES, PacketType.Serialize);
 			Initial = true;
 			while (info.Packet == null)
 			{
@@ -147,24 +103,29 @@ namespace EasyTCP.Serialize
 		}
 		private void TimerUpdate()
 		{
-			while (Connection != null && Connection.NetworkStream != null)
+			while (Connection != null && Connection.IsWork)
 			{
 				Thread.Sleep(10000);
 				Console.WriteLine("UPDATE KEYS");
 				var aes = new SecureAES();
 				aes.CreateKey();
-				Connection.Send(aes, HeaderPacket.Create(PacketType.Serialize)).Wait();
+				var data = Raw(aes);
+				LastAES = AES;
 				AES = aes;
+				Connection.WriteStream(data, HeaderPacket.Create(PacketType.Serialize)).Wait();
 			}
 			Console.WriteLine("END TimerUpdate");
 		}
-		private void Connection_CallbackReceiveEvent(Packets.Packet packet)
+		private void Connection_CallbackReceiveEvent(EasyTCP.Packets.Packet packet)
 		{
-			if (packet.Header.Type == PacketType.Serialize)
+			if (packet.Header.Type == PacketType.Serialize && Connection.Mode == TypeConnection.Server)
 			{
+				var x = AES;
 				AES = FromRaw<SecureAES>(packet.Bytes);
+				LastAES = x;
+				if (Initial == false)
+					packet.AnswerNull();
 				Initial = true;
-				//packet.Answer(new Packet() { UID = packet.UID });
 			}
 		}
 		private byte[] EncryptWithRSA(byte[] data, byte[] publicKey)
@@ -211,14 +172,143 @@ namespace EasyTCP.Serialize
 			}
 		}
 
-		public object FromRaw(byte[] data, Type type)
+		public T _FromRaw<T>(byte[] data)
 		{
-			throw new NotImplementedException();
+			if (typeof(T).IsValueType)
+			{
+				IntPtr ptr = Marshal.AllocHGlobal(data.Length);
+				Marshal.Copy(data, 0, ptr, data.Length);
+				T _struct = (T)Marshal.PtrToStructure(ptr, typeof(T));
+				Marshal.FreeHGlobal(ptr);
+				return _struct;
+			}
+			using (MemoryStream memoryStream = new MemoryStream(data))
+			{
+				BinaryFormatter formatter = new BinaryFormatter();
+				return (T)formatter.Deserialize(memoryStream);
+			}
+		}
+		public T FromRaw<T>(byte[] data)
+		{
+			byte[] bytes = new byte[data.Length];
+			if (Initial)
+				bytes = AES.Decrypt(data);
+			else
+				bytes = DecryptWithRSA(data, PrivateKey);
+			try
+			{
+				return _FromRaw<T>(bytes);
+			}
+			catch
+			{
+				if (Initial)
+					bytes = LastAES.Decrypt(data);
+				else
+					bytes = DecryptWithRSA(data, PrivateKey);
+				return _FromRaw<T>(bytes);
+			}
 		}
 
+		public object _FromRaw(byte[] data, Type type)
+		{
+			if (type.IsValueType)
+			{
+				IntPtr ptr = Marshal.AllocHGlobal(data.Length);
+				Marshal.Copy(data, 0, ptr, data.Length);
+				object _struct = Marshal.PtrToStructure(ptr, type);
+				Marshal.FreeHGlobal(ptr);
+				return _struct;
+			}
+			using (MemoryStream memoryStream = new MemoryStream(data))
+			{
+				BinaryFormatter formatter = new BinaryFormatter();
+				return formatter.Deserialize(memoryStream);
+			}
+		}
+		public object FromRaw(byte[] data, Type type)
+		{
+			byte[] bytes = new byte[data.Length];
+			if (Initial)
+				bytes = AES.Decrypt(data);
+			else
+				bytes = DecryptWithRSA(data, PrivateKey);
+			try
+			{
+				return _FromRaw(bytes, type);
+			}
+			catch
+			{
+				if (Initial)
+					bytes = LastAES.Decrypt(data);
+				else
+					bytes = DecryptWithRSA(data, PrivateKey);
+				return _FromRaw(bytes, type);
+			}
+		}
+		/// <summary>
+		/// работает только с классами!!!
+		/// </summary>
+		/// <param name="data"></param>
+		/// <returns></returns>
+		public object _FromRaw(byte[] data)
+		{
+			using (MemoryStream memoryStream = new MemoryStream(data))
+			{
+				BinaryFormatter formatter = new BinaryFormatter();
+				return formatter.Deserialize(memoryStream);
+			}
+		}
 		public object FromRaw(byte[] data)
 		{
-			throw new NotImplementedException();
+			byte[] bytes = new byte[data.Length];
+			if (Initial)
+				bytes = AES.Decrypt(data);
+			else
+				bytes = DecryptWithRSA(data, PrivateKey);
+			try
+			{
+				return _FromRaw(bytes);
+			}
+			catch
+			{
+				if (Initial)
+					bytes = LastAES.Decrypt(data);
+				else
+					bytes = DecryptWithRSA(data, PrivateKey);
+				return _FromRaw(bytes);
+			}
+		}
+
+		public byte[] _Raw(object obj)
+		{
+			if (obj.GetType().IsValueType)
+			{
+				int structSize = Marshal.SizeOf(obj);
+				byte[] struct_bytes = new byte[structSize];
+
+				IntPtr ptr = Marshal.AllocHGlobal(structSize);
+				Marshal.StructureToPtr(obj, ptr, false);
+				Marshal.Copy(ptr, struct_bytes, 0, structSize);
+				Marshal.FreeHGlobal(ptr);
+				return struct_bytes;
+			}
+			using (MemoryStream memoryStream = new MemoryStream())
+			{
+				BinaryFormatter formatter = new BinaryFormatter();
+				formatter.Serialize(memoryStream, obj);
+				return memoryStream.ToArray();
+			}
+		}
+		public byte[] Raw(object obj)
+		{
+			if (Initial)
+			{
+				return AES.Encrypt(_Raw(obj));
+			}
+			else
+			{
+				return EncryptWithRSA(_Raw(obj), PublicKey);
+			}
 		}
 	}
 }
