@@ -5,4 +5,4 @@
 # Ssl
 [Ssl](https://github.com/Camyil-89/EasyTCP/tree/master/TestClient/Examples/Ssl) - пример работы с Ssl шифрованием сетевого трафика.
 # Serialize
-[Serialize](https://github.com/Camyil-89/EasyTCP/tree/master/TestClient/Examples/Serialize) - пример реализации ISerialize с самописным шифрование.
+[Serialize](https://github.com/Camyil-89/EasyTCP/tree/master/TestClient/Examples/Serialize) - пример реализации интерфейса ISerialize с самописным шифрованием.
