@@ -7,4 +7,4 @@
 # Serialize
 [Serialize](https://github.com/Camyil-89/EasyTCP/tree/master/TestClient/Examples/Serialize) - пример реализации интерфейса ISerialize с самописным шифрованием.
 # Broadcast
-[Serialize](https://github.com/Camyil-89/EasyTCP/tree/master/TestClient/Examples/Broadcast) - пример отправки пакета на всех клиентов.
+[Broadcast](https://github.com/Camyil-89/EasyTCP/tree/master/TestClient/Examples/Broadcast) - пример отправки пакета на всех клиентов.
