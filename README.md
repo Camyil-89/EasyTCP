@@ -1,3 +1,4 @@
+![image](https://github.com/Camyil-89/EasyTCP/assets/76705837/424aff49-3db3-4c86-b003-9d288a105bfc)
 # EasyTCP
 [Примеры кода](https://github.com/Camyil-89/EasyTCP/tree/master/TestClient/Examples)
 ## Server
