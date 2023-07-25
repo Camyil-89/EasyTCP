@@ -4,7 +4,7 @@
 ![image](https://github.com/Camyil-89/EasyTCP/assets/76705837/ed5a9589-fbba-49bb-a188-cd542bf39cd5)
 ```C#
 [Serializable]
-	internal class MyPacket : EasyTCP.Packets.BasePacket
+	internal class MyPacket
 	{
 		public string Message = "Hello server!";
 		public override string ToString()
@@ -14,7 +14,7 @@
 	}
 
 	[Serializable]
-	internal class BigPacket : BasePacket
+	internal class BigPacket
 	{
 		public byte[] Bytes = new byte[1024 * 1024 * 25]; // 25 mb
 
@@ -29,7 +29,7 @@
 		{
 			EasyTCP.Client client = new EasyTCP.Client();
 			client.Connect("localhost", 2020);
-			var answer = client.SendAndWaitResponse(new MyPacket());
+			var answer = client.SendAndWaitResponse<MyPacket>(new MyPacket());
 			Console.WriteLine($"[FROM SERVER] {answer}");
 
 			foreach (var response_from_server in client.SendAndReceiveInfo(new BigPacket()))
@@ -62,7 +62,7 @@ internal class example_server
 			server.CallbackReceiveEvent += Server_CallbackReceiveEvent;
 		}
 
-		private void Server_CallbackReceiveEvent(EasyTCP.Packets.BasePacket packet)
+		private void Server_CallbackReceiveEvent(EasyTCP.Packets.Packet packet)
 		{
 			Console.WriteLine($"[SERVER RECEIVE] {packet}");
 			packet.Answer(packet);
