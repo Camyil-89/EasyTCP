@@ -329,13 +329,13 @@ namespace EasyTCP
 			NetworkStream.Close();
 			NetworkStream = null;
 		}
-		public void Send(object data, PacketType type = PacketType.None, PacketMode mode = PacketMode.Hidden, byte type_packet = 0)
+		public void Send(object data, PacketType type = PacketType.None, PacketMode mode = PacketMode.Hidden, ushort type_packet = 0)
 		{
 			var header = HeaderPacket.Create(type, mode);
 			header.TypePacket = type_packet;
 			Send(data, header).Wait();
 		}
-		public WaitInfoPacket SendAndWaitUnlimited(object data, PacketType type = PacketType.None, PacketMode mode = PacketMode.Hidden, byte type_packet = 0)
+		public WaitInfoPacket SendAndWaitUnlimited(object data, PacketType type = PacketType.None, PacketMode mode = PacketMode.Hidden, ushort type_packet = 0)
 		{
 			var wait_info_packet = new WaitInfoPacket() { };
 

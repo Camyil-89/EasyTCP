@@ -10,7 +10,7 @@ namespace EasyTCP.Utilities
 {
 	public class PacketEntity
 	{
-		public byte Type { get; init; } = 0;
+		public ushort Type { get; init; } = 0;
 		public Type ObjType { get; init; }
 		public delegate void CallbackReceive(object packet, Packet rawPacket);
 		public event CallbackReceive CallbackReceiveEvent;

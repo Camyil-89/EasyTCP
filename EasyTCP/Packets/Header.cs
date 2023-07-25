@@ -23,12 +23,12 @@ namespace EasyTCP.Packets
 	[StructLayout(LayoutKind.Sequential, Pack = 1)]
 	public struct HeaderPacket
 	{
-		public byte Version;
-		public long DataSize;
-		public int UID;
-		public PacketMode Mode;
-		public PacketType Type;
-		public byte TypePacket;
+		public byte Version; // 1 byte
+		public long DataSize; // 8 byte
+		public int UID; // 4 byte
+		public PacketMode Mode; // 1 byte
+		public PacketType Type; // 1 byte
+		public ushort TypePacket; // 2 byte
 		public static HeaderPacket Create(PacketType type = PacketType.None, PacketMode mode = PacketMode.Hidden)
 		{
 			var x = new HeaderPacket();

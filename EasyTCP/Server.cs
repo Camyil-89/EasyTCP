@@ -118,6 +118,21 @@ namespace EasyTCP
 			CallbackDisconnectClientEvent?.Invoke(serverClient);
 			Clients.Remove(serverClient);
 		}
+		public void AnswerBroadcast(object obj, List<ServerClient> blackList = null)
+		{
+			if (blackList == null)
+				blackList = new List<ServerClient>();
+
+			var header = HeaderPacket.Create();
+			header.TypePacket = PacketEntityManager.IsEntity(obj.GetType());
+
+			foreach (var client in Clients)
+			{
+				if (blackList.Contains(client))
+					continue;
+				client.Connection.Send(obj, header).Wait();
+			}
+		}
 		public void Answer(Packet packet, object obj)
 		{
 			packet.Header.TypePacket = PacketEntityManager.IsEntity(obj.GetType());

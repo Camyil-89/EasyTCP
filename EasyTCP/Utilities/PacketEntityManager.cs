@@ -11,8 +11,8 @@ namespace EasyTCP.Utilities
 {
 	public class PacketEntityManager
 	{
-		private Dictionary<byte, PacketEntity> PacketObservers = new Dictionary<byte, PacketEntity>();
-		private Dictionary<Type, byte> PacketObserversTypes = new Dictionary<Type, byte>();
+		private Dictionary<ushort, PacketEntity> PacketObservers = new Dictionary<ushort, PacketEntity>();
+		private Dictionary<Type, ushort> PacketObserversTypes = new Dictionary<Type, ushort>();
 		public PacketEntity RegistrationPacket<T>(byte id)
 		{
 			if (id == 0)
@@ -22,14 +22,14 @@ namespace EasyTCP.Utilities
 			PacketObserversTypes.Add(typeof(T), id);
 			return pe;
 		}
-		public byte IsEntity(byte type)
+		public ushort IsEntity(ushort type)
 		{
 			if (PacketObservers.ContainsKey(type))
 				return type;
 			else
 				return 0;
 		}
-		public byte IsEntity(Type type)
+		public ushort IsEntity(Type type)
 		{
 			if (PacketObserversTypes.ContainsKey(type))
 				return PacketObserversTypes[type];
