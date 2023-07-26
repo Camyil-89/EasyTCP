@@ -5,6 +5,32 @@ EasyTCP способно передавать большие объемы дан
 
 ## [Примеры](https://github.com/Camyil-89/EasyTCP/tree/master/TestClient/Examples)
 
+## Протокол EasyTCP
+`
+<table >
+  <tr>
+    <tr>
+            <td colspan="8" style="text-align: center" >1 - 8 Байт</td>
+        </tr>
+        <tr>
+            <td colspan="1">Version (1 Байт)</td>
+			<td colspan="4">DataSize (4 Байта)</td>
+			<td colspan="3">UID (4 Байта)</td>
+        </tr>
+		 <tr>
+            <td colspan="1">UID (перенос)</td>
+			<td colspan="1">Mode (1 Байт)</td>
+			<td colspan="1">Type (1 Байт)</td>
+			<td colspan="2">TypePacket (2 Байт)</td>
+			<td colspan="1">Данные</td>
+			<td colspan="1">Данные</td>
+			<td colspan="1">Данные</td>
+        </tr>
+		<tr>
+            <td colspan="8" style="text-align: center">Данные</td>
+        </tr>
+    </table>
+`
 ## Client
 > Объяснения функционала (может быть не точным, из за внесения изменений в функции).
 ### Connect
