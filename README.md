@@ -6,7 +6,7 @@ EasyTCP способно передавать большие объемы дан
 ## [Примеры](https://github.com/Camyil-89/EasyTCP/tree/master/TestClient/Examples)
 
 ## Протокол EasyTCP
-Протокол EasyTCP работает поверх TCP что обеспечивает целостность доставки данных.
+Протокол EasyTCP работает поверх TCP что обеспечивает целостность доставки данных. Позволяет передавать с помощью 1 пакета данные объемом ~ 2 ГБайта (2147483647 Байт).
 > Структура заголовка пакета EasyTCP. Общая длина заголовка 13 байт.
 <table>
   <tr>
@@ -23,12 +23,12 @@ EasyTCP способно передавать большие объемы дан
 			<td colspan="1" align="center">Mode (1 Байт)</td>
 			<td colspan="1" align="center">Type (1 Байт)</td>
 			<td colspan="2" align="center">TypePacket (2 Байт)</td>
-			<td colspan="1" align="center">Данные</td>
-			<td colspan="1" align="center">Данные</td>
-			<td colspan="1" align="center">Данные</td>
+			<td colspan="1" align="center"></td>
+			<td colspan="1" align="center"></td>
+			<td colspan="1" align="center"></td>
         </tr>
 		<tr>
-            <td colspan="8" align="center">Данные</td>
+            <td colspan="8" align="center">Данные (0 - 2147483647 Байт)</td>
         </tr>
 </table>
 
