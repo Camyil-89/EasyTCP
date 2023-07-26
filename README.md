@@ -24,7 +24,7 @@ EasyTCP способно передавать большие объемы дан
             <td colspan="1">UID (перенос)</td>
 			<td colspan="1" align="center">Mode (1 Байт)</td>
 			<td colspan="1" align="center">Type (1 Байт)</td>
-			<td colspan="2" align="center">TypePacket (2 Байт)</td>
+			<td colspan="2" align="center">TypePacket (2 Байта)</td>
 			<td colspan="1" align="center"></td>
 			<td colspan="1" align="center"></td>
 			<td colspan="1" align="center"></td>
