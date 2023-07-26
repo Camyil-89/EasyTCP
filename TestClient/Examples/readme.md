@@ -8,3 +8,5 @@
 [Serialize](https://github.com/Camyil-89/EasyTCP/tree/master/TestClient/Examples/Serialize) - пример реализации интерфейса ISerialize с самописным шифрованием.
 # Broadcast
 [Broadcast](https://github.com/Camyil-89/EasyTCP/tree/master/TestClient/Examples/Broadcast) - пример отправки пакета на всех клиентов.
+# Firewall
+[Firewall](https://github.com/Camyil-89/EasyTCP/tree/master/TestClient/Examples/Firewall) - пример реализации интерфейса IFirewall.
