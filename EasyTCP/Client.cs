@@ -7,12 +7,23 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace EasyTCP
 {
+	/// <summary>
+	/// Информация о передачи пакета
+	/// </summary>
+	/// <typeparam name="T"></typeparam>
 	public class ResponseInfo<T>
 	{
+		/// <summary>
+		/// Ответ от сервера
+		/// </summary>
 		public T Packet { get; set; }
-
+		/// <summary>
+		/// Информация о передачи
+		/// </summary>
 		public ReceiveInfo Info { get; set; }
-
+		/// <summary>
+		/// Информация о режиме передачи (либо на сервер отправляем, либо получаем от сервера)
+		/// </summary>
 		public bool ReceiveFromServer = false;
 
         public ResponseInfo()
@@ -27,9 +38,22 @@ namespace EasyTCP
 		private X509Certificate Certificate;
 		private bool IsSsl = false;
 		private bool IsCheckCert = true;
-		public Connection Connection { get; private set; }
-		public PacketEntityManager PacketEntityManager { get; private set; } = new PacketEntityManager();
 		private TcpClient TCPClient { get; set; }
+		/// <summary>
+		/// Подключение к серверу (низкий уровень взаимодействия)
+		/// </summary>
+		public Connection Connection { get; private set; }
+		/// <summary>
+		/// Менеджер пакетов.
+		/// </summary>
+		public PacketEntityManager PacketEntityManager { get; private set; } = new PacketEntityManager();
+		/// <summary>
+		/// Подключение к серверу
+		/// </summary>
+		/// <param name="host">адрес сервера</param>
+		/// <param name="port">порт сервера</param>
+		/// <param name="serialization">интерфейс сериализации пакетов</param>
+		/// <returns>bool</returns>
 		public bool Connect(string host, int port, ISerialization serialization = null)
 		{
 			try
@@ -50,6 +74,9 @@ namespace EasyTCP
 			}
 			catch { return false; }
 		}
+		/// <summary>
+		/// Закрывает подключение
+		/// </summary>
 		public void Close()
 		{
 			Connection.Abort();
@@ -73,12 +100,28 @@ namespace EasyTCP
 				return;
 			}
 		}
+		/// <summary>
+		/// Включает Ssl шифрование
+		/// </summary>
+		/// <param name="certificate">сертификат</param>
+		/// <param name="IsValidateCertificate">проверка валидности сертификата</param>
 		public void EnableSsl(X509Certificate certificate, bool IsValidateCertificate)
 		{
 			IsSsl = true;
 			Certificate = certificate;
 			IsCheckCert = IsValidateCertificate;
 		}
+		/// <summary>
+		/// Отправка пакета и ожидания получение ответа от сервера.
+		/// Получает информацию о передачи пакета.
+		/// </summary>
+		/// <typeparam name="T">тип возвращаемого пакета</typeparam>
+		/// <param name="obj">объект который нужно передать</param>
+		/// <param name="timeout">время ожидания ответа</param>
+		/// <returns>ResponseInfo<T></returns>
+		/// <exception cref="ExceptionEasyTCPAbortConnect"></exception>
+		/// <exception cref="ExceptionEasyTCPFirewall"></exception>
+		/// <exception cref="ExceptionEasyTCPTimeout"></exception>
 		public IEnumerable<ResponseInfo<T>> SendAndReceiveInfo<T>(T obj, int timeout = int.MaxValue)
 		{
 			CheckConnection();
@@ -125,7 +168,7 @@ namespace EasyTCP
 		/// <typeparam name="T">тип возвращаемого пакета</typeparam>
 		/// <param name="obj">пакет который нужно отправить</param>
 		/// <param name="timeout">время ожидания</param>
-		/// <returns></returns>
+		/// <returns>T</returns>
 		/// <exception cref="ExceptionEasyTCPAbortConnect"></exception>
 		/// <exception cref="ExceptionEasyTCPTimeout"></exception>
 		public T SendAndWaitResponse<T>(object obj, int timeout = int.MaxValue)
@@ -145,6 +188,10 @@ namespace EasyTCP
 			}
 			throw new ExceptionEasyTCPTimeout($"Timeout wait response! {info.Stopwatch.ElapsedMilliseconds} \\ {timeout}");
 		}
+		/// <summary>
+		/// Отправляет пакет и не ждет ответа
+		/// </summary>
+		/// <param name="obj">отправляет объект на сервер</param>
 		public void Send(object obj)
 		{
 			CheckConnection();
