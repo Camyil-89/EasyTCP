@@ -260,7 +260,7 @@ namespace EasyTCP
 			long bytes_read_to_send_info = 0;
 			var read_data = new Packet() { Header = header };
 			read_data.Client = ServerClient;
-			HeaderPacket header_rec_info = HeaderPacket.Create(PacketType.ReceiveInfo, PacketMode.ReceiveInfo);
+			HeaderPacket header_rec_info = HeaderPacket.Create(PacketType.ReceiveInfo, PacketMode.Hidden);
 			header_rec_info.UID = header.UID;
 			ReceiveInfo receiveInfo = new ReceiveInfo();
 
@@ -276,7 +276,7 @@ namespace EasyTCP
 					totalBytesRead += bytesRead;
 					bytes_read_to_send_info += bytesRead;
 					ms.Write(Buffer, 0, bytesRead);
-					if (WaitPackets.ContainsKey(header.UID) && header.Mode != PacketMode.ReceiveInfo && bytes_read_to_send_info >= BlockSizeForSendInfoReceive)
+					if (WaitPackets.ContainsKey(header.UID) && header.Type != PacketType.ReceiveInfo && bytes_read_to_send_info >= BlockSizeForSendInfoReceive)
 					{
 						bytes_read_to_send_info = 0;
 						WaitPackets[header.UID].RSTStopwatch = true;
@@ -293,7 +293,7 @@ namespace EasyTCP
 					}
 					Statistics.ReceivedBytes += bytesRead;
 				}
-				if (WaitPackets.ContainsKey(header.UID) && header.Mode != PacketMode.ReceiveInfo)
+				if (WaitPackets.ContainsKey(header.UID) && header.Type != PacketType.ReceiveInfo)
 				{
 					WaitPackets[header.UID].RSTStopwatch = true;
 					WaitPackets[header.UID].IsReadFromServer = true;
