@@ -6,31 +6,44 @@ EasyTCP способно передавать большие объемы дан
 ## [Примеры](https://github.com/Camyil-89/EasyTCP/tree/master/TestClient/Examples)
 
 ## Протокол EasyTCP
-`
-<table >
+Протокол EasyTCP работает поверх TCP что обеспечивает целостность доставки данных.
+> Структура заголовка пакета EasyTCP. Общая длина заголовка 13 байт.
+<table>
   <tr>
     <tr>
-            <td colspan="8" style="text-align: center" >1 - 8 Байт</td>
+            <td colspan="8" align="center">1 - 8 Байт</td>
         </tr>
         <tr>
-            <td colspan="1">Version (1 Байт)</td>
-			<td colspan="4">DataSize (4 Байта)</td>
-			<td colspan="3">UID (4 Байта)</td>
+            <td colspan="1" align="center">Version (1 Байт)</td>
+			<td colspan="4" align="center">DataSize (4 Байта)</td>
+			<td colspan="3" align="center">UID (4 Байта)</td>
         </tr>
 		 <tr>
             <td colspan="1">UID (перенос)</td>
-			<td colspan="1">Mode (1 Байт)</td>
-			<td colspan="1">Type (1 Байт)</td>
-			<td colspan="2">TypePacket (2 Байт)</td>
-			<td colspan="1">Данные</td>
-			<td colspan="1">Данные</td>
-			<td colspan="1">Данные</td>
+			<td colspan="1" align="center">Mode (1 Байт)</td>
+			<td colspan="1" align="center">Type (1 Байт)</td>
+			<td colspan="2" align="center">TypePacket (2 Байт)</td>
+			<td colspan="1" align="center">Данные</td>
+			<td colspan="1" align="center">Данные</td>
+			<td colspan="1" align="center">Данные</td>
         </tr>
 		<tr>
-            <td colspan="8" style="text-align: center">Данные</td>
+            <td colspan="8" align="center">Данные</td>
         </tr>
-    </table>
-`
+</table>
+
+>Описание параметров заголовка EasyTCP.
+
+|Параметры|Размер (Байт) | Описание|
+|-|-|-|
+|Version|1|Версия протокола EasyTCP|
+|DataSize|4|Длина данных после заголовка|
+|UID|4|Уникальный идентификатор для обработки ожидаемых пакетов.|
+|Mode|1|Определяет режим передачи пакета.<br>Hidden (0) - не уведомляет клиента о количестве считанных байт из отправленного клиентом пакета.<br>Info (1) - уведомляет клиента о количестве считанных байт из отправленного клиентом пакета|
+|Type|1|Тип пакета который передается. Все служебные пакеты начинаются с 1 по 6, 0 - передача клиентского пакета|
+|TypePacket|2|Указывает что это за пакет для PacketEntityManager, 0 - зарезервирован для не определенного пакета.|
+|Общая длина пакета|13|
+
 ## Client
 > Объяснения функционала (может быть не точным, из за внесения изменений в функции).
 ### Connect
