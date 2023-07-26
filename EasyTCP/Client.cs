@@ -119,6 +119,15 @@ namespace EasyTCP
 			if (info.Packet == null)
 				throw new ExceptionEasyTCPTimeout($"Timeout wait response! {info.Stopwatch.ElapsedMilliseconds} \\ {timeout}");
 		}
+		/// <summary>
+		/// отправляет пакет на сервер и ждет ответ
+		/// </summary>
+		/// <typeparam name="T">тип возвращаемого пакета</typeparam>
+		/// <param name="obj">пакет который нужно отправить</param>
+		/// <param name="timeout">время ожидания</param>
+		/// <returns></returns>
+		/// <exception cref="ExceptionEasyTCPAbortConnect"></exception>
+		/// <exception cref="ExceptionEasyTCPTimeout"></exception>
 		public T SendAndWaitResponse<T>(object obj, int timeout = int.MaxValue)
 		{
 			CheckConnection();
