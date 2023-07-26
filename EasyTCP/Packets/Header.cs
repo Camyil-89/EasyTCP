@@ -13,6 +13,7 @@ namespace EasyTCP.Packets
 		FirewallBlock = 4,
 		Serialize = 5,
 		Abort = 6,
+		InitConnection = 7,
 	}
 	public enum PacketMode: byte
 	{

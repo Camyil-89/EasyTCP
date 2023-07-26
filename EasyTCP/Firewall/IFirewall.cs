@@ -10,6 +10,6 @@ namespace EasyTCP.Firewall
 		public PacketFirewall ValidateConnectAnswer(ServerClient client);
 		public bool ValidateHeader(HeaderPacket header);
 		public bool ValidateRaw(byte[] data);
-		public bool ValidateConnect(TcpClient client);
+		public bool ValidateConnect(ServerClient client);
 	}
 }

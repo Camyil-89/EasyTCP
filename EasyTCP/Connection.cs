@@ -41,7 +41,7 @@ namespace EasyTCP
 		private Dictionary<int, WaitInfoPacket> WaitPackets = new Dictionary<int, WaitInfoPacket>();
 		private NetworkStream NetworkStream { get; set; }
 		private SslStream SslStream { get; set; } = null;
-		private byte[] Buffer { get; set; }
+		private byte[] Buffer { get; set; } = new byte[1024 * 64];
 
 		/// <summary>
 		/// Client
@@ -105,7 +105,6 @@ namespace EasyTCP
 		}
 		public void Init()
 		{
-			Buffer = new byte[1024 * 64]; // 64 kb
 			RXHandler();
 			Serialization.InitConnection(this);
 		}
@@ -116,8 +115,9 @@ namespace EasyTCP
 			{
 				var raw = Serialization.Raw(data);
 				await WriteStream(raw, header);
-			} catch (Exception e) { Console.WriteLine(e); }
-			
+			}
+			catch (Exception e) { }
+
 		}
 		public async Task WriteStream(byte[] data, HeaderPacket header)
 		{
@@ -154,6 +154,25 @@ namespace EasyTCP
 			}
 			catch (Exception ex) { }
 		}
+		public async Task<Packet> WaitPacketConnection()
+		{
+			Packet pakcet = null;
+			while (true)
+			{
+				pakcet = null;
+				try
+				{
+					var packet = await _Read();
+					if (packet != null)
+					{
+						packet.CallbackAnswerEvent += ReadData_CallbackAnswerEvent;
+						return packet;
+					}
+
+				}
+				catch { }
+			}
+		}
 		private async Task RXHandler()
 		{
 			int bytesRead = 0;
@@ -177,11 +196,11 @@ namespace EasyTCP
 							NetworkStream = null;
 							return;
 						}
-						if (readData.Header.Type == PacketType.Serialize)
+						else if (readData.Header.Type == PacketType.Serialize)
 						{
 							Task.Run(() => { CallbackReceiveSerializationEvent?.Invoke(readData); });
 						}
-						if (WaitPackets.ContainsKey(readData.Header.UID))
+						else if (WaitPackets.ContainsKey(readData.Header.UID))
 						{
 							if (readData.Header.Type == PacketType.RSTStopwatch)
 							{
@@ -197,6 +216,10 @@ namespace EasyTCP
 							}
 							else
 								WaitPackets[readData.Header.UID].Packet = readData;
+						}
+						else if (readData.Header.Type == PacketType.Ping)
+						{
+							readData.Answer(readData);
 						}
 						else
 						{

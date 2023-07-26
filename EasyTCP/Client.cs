@@ -47,6 +47,10 @@ namespace EasyTCP
 		/// Менеджер пакетов.
 		/// </summary>
 		public PacketEntityManager PacketEntityManager { get; private set; } = new PacketEntityManager();
+
+		public delegate void CallbackReceiveFirewall(PacketFirewall packet);
+		public event CallbackReceiveFirewall CallbackReceiveFirewallEvent;
+
 		/// <summary>
 		/// Подключение к серверу
 		/// </summary>
@@ -54,25 +58,28 @@ namespace EasyTCP
 		/// <param name="port">порт сервера</param>
 		/// <param name="serialization">интерфейс сериализации пакетов</param>
 		/// <returns>bool</returns>
-		public bool Connect(string host, int port, ISerialization serialization = null)
+		public bool Connect(string host, int port, ISerialization serialization = null, int timeout = 5000)
 		{
-			try
-			{
-				TCPClient = new TcpClient();
-				TCPClient.Connect(host, port);
-				Connection = new Connection(TCPClient.GetStream(), TypeConnection.Client, 700, 700);
-				Connection.ServerName = host;
-				Connection.PortServer = port;
-				if (IsSsl)
-					Connection.EnableSsl(Certificate, IsCheckCert);
-				if (serialization != null)
-					Connection.Serialization = serialization;
+			TCPClient = new TcpClient();
+			TCPClient.Connect(host, port);
+			Connection = new Connection(TCPClient.GetStream(), TypeConnection.Client, 700, 700);
+			Connection.ServerName = host;
+			Connection.PortServer = port;
+			if (IsSsl)
+				Connection.EnableSsl(Certificate, IsCheckCert);
+			if (serialization != null)
+				Connection.Serialization = serialization;
 
-				Connection.Init();
-				Connection.CallbackReceiveEvent += Connection_CallbackReceiveEvent;
-				return true;
+			Connection.Init();
+			Connection.CallbackReceiveEvent += Connection_CallbackReceiveEvent;
+			var answer = SendAndWaitResponse<PacketConnection>(PacketConnection.Create(PacketConnectionType.OK), PacketType.InitConnection, PacketMode.Hidden, 0, timeout);
+			if (answer.Type == PacketConnectionType.Abort)
+			{
+				throw new ExceptionEasyTCPFirewall($"code: {answer.Firewall.Code} | {answer.Firewall.Answer}");
 			}
-			catch { return false; }
+			else if (answer.Type == PacketConnectionType.OK)
+				return true;
+			return false;
 		}
 		/// <summary>
 		/// Закрывает подключение
@@ -140,6 +147,7 @@ namespace EasyTCP
 					if (info.Packet.Header.Type == PacketType.FirewallBlock)
 					{
 						var answer = Connection.Serialization.FromRaw<PacketFirewall>(info.Packet.Bytes);
+						CallbackReceiveFirewallEvent?.Invoke(answer);
 						throw new ExceptionEasyTCPFirewall($"code: {answer.Code} | {answer.Answer}");
 					}
 					yield return new ResponseInfo<T>() { Packet = Connection.Serialization.FromRaw<T>(info.Packet.Bytes), Info = last_rec_info };
@@ -173,14 +181,24 @@ namespace EasyTCP
 		/// <exception cref="ExceptionEasyTCPTimeout"></exception>
 		public T SendAndWaitResponse<T>(object obj, int timeout = int.MaxValue)
 		{
+			return SendAndWaitResponse<T>(obj, PacketType.None, PacketMode.Hidden, PacketEntityManager.IsEntity(obj.GetType()), timeout);
+		}
+		public T SendAndWaitResponse<T>(object obj, PacketType type, PacketMode mode, ushort type_packet, int timeout = int.MaxValue)
+		{
 			CheckConnection();
 
-			var info = Connection.SendAndWaitUnlimited(obj, PacketType.None, PacketMode.Hidden, PacketEntityManager.IsEntity(obj.GetType()));
+			var info = Connection.SendAndWaitUnlimited(obj, type, mode, type_packet);
 			while (info.Stopwatch.ElapsedMilliseconds < timeout)
 			{
 				if (TCPClient.Connected == false || Connection.IsWork == false)
 				{
 					throw new ExceptionEasyTCPAbortConnect("Lost connect with server!");
+				}
+				if (info.Packet != null && info.Packet.Header.Type == PacketType.FirewallBlock)
+				{
+					var answer = Connection.Serialization.FromRaw<PacketFirewall>(info.Packet.Bytes);
+					CallbackReceiveFirewallEvent?.Invoke(answer);
+					throw new ExceptionEasyTCPFirewall($"code: {answer.Code} | {answer.Answer}");
 				}
 				if (info.Packet != null)
 					return Connection.Serialization.FromRaw<T>(info.Packet.Bytes);

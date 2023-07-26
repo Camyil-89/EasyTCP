@@ -74,12 +74,6 @@ namespace EasyTCP
 				try
 				{
 					var client = TcpListener.AcceptTcpClient();
-					if (Firewall != null && Firewall.ValidateConnect(client) == false)
-					{
-						client.Close();
-						client.Dispose();
-						continue;
-					}
 					Thread thread = new Thread(() => { HandlerClient(client); });
 					thread.Start();
 				}
@@ -103,17 +97,38 @@ namespace EasyTCP
 				connection.BlockSizeForSendInfoReceive = BlockSizeForSendInfoReceive;
 				connection.Firewall = Firewall;
 				connection.Serialization = Serialization;
-				connection.Init();
 
 				serverClient.Connection = connection;
-			
+				var packet_client = connection.WaitPacketConnection().Result;
 
-				Clients.Add(serverClient);
-				CallbackConnectClientEvent?.Invoke(serverClient);
-				while (client != null && client.Connected && serverClient.Connection != null && serverClient.Connection.IsWork == true)
+				connection.Init();
+				if (Firewall != null && Firewall.ValidateConnect(serverClient) == false)
 				{
-					Thread.Sleep(250);
+					var connect_packet = Serialization.FromRaw<PacketConnection>(packet_client.Bytes);
+					connect_packet.Firewall = Firewall.ValidateConnectAnswer(serverClient);
+					connect_packet.Type = PacketConnectionType.Abort;
+					packet_client.Bytes = Serialization.Raw(connect_packet);
+					serverClient.Connection.WriteStream(packet_client.Bytes, packet_client.Header).Wait();
+					Thread.Sleep(3000);
+					serverClient.Connection.Abort();
+					client.Close();
+					client.Dispose();
 				}
+				else
+				{
+					serverClient.Connection.WriteStream(packet_client.Bytes, packet_client.Header).Wait();
+					Clients.Add(serverClient);
+					CallbackConnectClientEvent?.Invoke(serverClient);
+					while (client != null && client.Connected && serverClient.Connection != null && serverClient.Connection.IsWork == true)
+					{
+						Thread.Sleep(250);
+					}
+				}
+				
+
+				
+				
+				
 			} catch (Exception e) { }
 			client.Close();
 			client.Dispose();

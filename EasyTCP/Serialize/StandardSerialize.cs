@@ -57,6 +57,8 @@ namespace EasyTCP.Serialize
 
 		public byte[] Raw(object obj)
 		{
+			if (obj == null)
+				return new byte[0];
             if (obj.GetType().IsValueType)
             {
 				int structSize = Marshal.SizeOf(obj);

@@ -10,7 +10,7 @@ namespace EasyTCP.Packets
 		/// </summary>
 		[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 255)]
 		public string Answer;
-        public short Code;
+        public ushort Code;
     }
 
 }
