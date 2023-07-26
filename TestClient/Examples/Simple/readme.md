@@ -1,7 +1,6 @@
 # Simple
 Пример простого TCP соединение между клиентом и сервером.
 ## Клиент
-![image](https://github.com/Camyil-89/EasyTCP/assets/76705837/ed5a9589-fbba-49bb-a188-cd542bf39cd5)
 ```C#
 [Serializable]
 	internal class MyPacket
@@ -16,7 +15,7 @@
 	[Serializable]
 	internal class BigPacket
 	{
-		public byte[] Bytes = new byte[1024 * 1024 * 25]; // 25 mb
+		public byte[] Bytes = new byte[2130702268]; // ~ 2 gb
 
 		public override string ToString()
 		{
@@ -29,7 +28,7 @@
 		{
 			EasyTCP.Client client = new EasyTCP.Client();
 			client.Connect("localhost", 2020);
-			var answer = client.SendAndWaitResponse<MyPacket>(new MyPacket());
+			var answer = client.SendAndWaitResponse<MyPacket>(new MyPacket(), 1000);
 			Console.WriteLine($"[FROM SERVER] {answer}");
 
 			foreach (var response_from_server in client.SendAndReceiveInfo(new BigPacket()))
@@ -43,12 +42,12 @@
 				else
 					Console.WriteLine($"[SEND TO SERVER] progress: {response_from_server.Info.Receive} \\ {response_from_server.Info.TotalNeedReceive} bytes");
 			}
-
+			Console.WriteLine(client.Connection.Statistics);
+			Console.WriteLine(client.Connection.Statistics.ReceivedBytes - client.Connection.Statistics.SentBytes); // выводит накладные расходы.
 		}
 	}
 ```
 ## Сервер
-![image](https://github.com/Camyil-89/EasyTCP/assets/76705837/6d24c50a-be02-44b4-a11a-8e19652e5759)
 ```C#
 internal class example_server
 	{
@@ -56,15 +55,24 @@ internal class example_server
 		public void Example()
 		{
 			EasyTCP.Server server = new EasyTCP.Server();
-			server.Start(2020);
+			server.BlockSizeForSendInfoReceive = 1024 * 1024 * 64; // 64 mb
 			server.CallbackConnectClientEvent += Server_CallbackConnectClientEvent;
 			server.CallbackDisconnectClientEvent += Server_CallbackDisconnectClientEvent;
 			server.CallbackReceiveEvent += Server_CallbackReceiveEvent;
+			server.Start(2020);
 		}
 
 		private void Server_CallbackReceiveEvent(EasyTCP.Packets.Packet packet)
 		{
 			Console.WriteLine($"[SERVER RECEIVE] {packet}");
+
+			Thread.Sleep(500); // проверка работы сброса таймера
+			packet.ResetWatchdog();
+			Thread.Sleep(500); // проверка работы сброса таймера
+			packet.ResetWatchdog();
+			Thread.Sleep(500); // проверка работы сброса таймера
+			packet.ResetWatchdog();
+
 			packet.Answer(packet);
 		}
 
