@@ -16,7 +16,7 @@ namespace TestClient.Examples.Simple
 	[Serializable]
 	internal class BigPacket
 	{
-		public byte[] Bytes = new byte[1024 * 1024 * 25]; // 25 mb
+		public byte[] Bytes = new byte[2130702268]; // ~ 2 gb
 
 		public override string ToString()
 		{
@@ -29,7 +29,7 @@ namespace TestClient.Examples.Simple
 		{
 			EasyTCP.Client client = new EasyTCP.Client();
 			client.Connect("localhost", 2020);
-			var answer = client.SendAndWaitResponse<MyPacket>(new MyPacket());
+			var answer = client.SendAndWaitResponse<MyPacket>(new MyPacket(), 1000);
 			Console.WriteLine($"[FROM SERVER] {answer}");
 
 			foreach (var response_from_server in client.SendAndReceiveInfo(new BigPacket()))
@@ -43,7 +43,8 @@ namespace TestClient.Examples.Simple
 				else
 					Console.WriteLine($"[SEND TO SERVER] progress: {response_from_server.Info.Receive} \\ {response_from_server.Info.TotalNeedReceive} bytes");
 			}
-
+			Console.WriteLine(client.Connection.Statistics);
+			Console.WriteLine(client.Connection.Statistics.ReceivedBytes - client.Connection.Statistics.SentBytes); // выводит накладные расходы.
 		}
 	}
 }

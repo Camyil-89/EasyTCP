@@ -24,6 +24,7 @@ namespace EasyTCP
 		private bool IsSsl = false;
 		private bool IsCheckCert = true;
 
+		public int BlockSizeForSendInfoReceive { get; set; } = 1024 * 1024;
 		public Serialize.ISerialization Serialization { get; private set; } = new Serialize.StandardSerialize();
 		public List<ServerClient> Clients { get; private set; } = new List<ServerClient>();
 		public TcpListener TcpListener { get; private set; }
@@ -99,6 +100,7 @@ namespace EasyTCP
 				}
 				connection.ServerClient = serverClient;
 				connection.CallbackReceiveEvent += Receive;
+				connection.BlockSizeForSendInfoReceive = BlockSizeForSendInfoReceive;
 				connection.Firewall = Firewall;
 				connection.Serialization = Serialization;
 				connection.Init();

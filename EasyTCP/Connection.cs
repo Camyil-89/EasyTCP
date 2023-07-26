@@ -58,7 +58,7 @@ namespace EasyTCP
 		public ISerialization Serialization { get; set; } = new StandardSerialize();
 		public Firewall.IFirewall Firewall { get; set; } = null;
 		public Statistics Statistics { get; private set; } = new Statistics();
-		public int BlockSizeForSendInfoReceive { get; set; } = 1024 * 1024;
+		public int BlockSizeForSendInfoReceive { get; set; } = 1024 * 1024; // 1 mb
 
 		public delegate void CallbackReceive(Packet packet);
 		public event CallbackReceive CallbackReceiveEvent;
@@ -112,14 +112,18 @@ namespace EasyTCP
 
 		public async Task Send(object data, HeaderPacket header)
 		{
-			var raw = Serialization.Raw(data);
-			await WriteStream(raw, header);
+			try
+			{
+				var raw = Serialization.Raw(data);
+				await WriteStream(raw, header);
+			} catch (Exception e) { Console.WriteLine(e); }
+			
 		}
 		public async Task WriteStream(byte[] data, HeaderPacket header)
 		{
 			if (data == null)
 				data = new byte[0];
-			header.DataSize = data.LongLength;
+			header.DataSize = data.Length;
 			int structSize = Marshal.SizeOf(header);
 			byte[] struct_bytes = new byte[structSize];
 
@@ -145,10 +149,10 @@ namespace EasyTCP
 					await SslStream.FlushAsync();
 				}
 				Statistics.SentPackets++;
-				Statistics.SentBytes += result.LongLength;
+				Statistics.SentBytes += result.Length;
 				//Console.WriteLine($"TX: {data.Length} | {result.Length} ({header.UID})");
 			}
-			catch (Exception ex) { Console.WriteLine(ex); }
+			catch (Exception ex) { }
 		}
 		private async Task RXHandler()
 		{
@@ -166,6 +170,7 @@ namespace EasyTCP
 						readData = task.Result;
 						readData.CallbackAnswerEvent += ReadData_CallbackAnswerEvent;
 						Statistics.ReceivedPackets++;
+						//Console.WriteLine($"packet: {readData.Header.UID} | {readData.Header.Type} | {readData.Header.TypePacket}");
 						if (readData.Header.Type == PacketType.Abort)
 						{
 							NetworkStream.Close();
@@ -252,7 +257,7 @@ namespace EasyTCP
 				}
 				return null;
 			}
-			int bytes_read_to_send_info = 0;
+			long bytes_read_to_send_info = 0;
 			var read_data = new Packet() { Header = header };
 			read_data.Client = ServerClient;
 			HeaderPacket header_rec_info = HeaderPacket.Create(PacketType.ReceiveInfo, PacketMode.ReceiveInfo);
@@ -263,7 +268,7 @@ namespace EasyTCP
 			{
 				while (totalBytesRead < header.DataSize)
 				{
-					var buffer_size = (int)(Buffer.LongLength <= header.DataSize - totalBytesRead ? Buffer.Length : header.DataSize - totalBytesRead);
+					var buffer_size = (int)(Buffer.Length <= header.DataSize - totalBytesRead ? Buffer.Length : header.DataSize - totalBytesRead);
 					if (TypeStreamConnection == TypeStreamConnection.NotEncrypted)
 						bytesRead = await NetworkStream.ReadAsync(Buffer, 0, buffer_size).ConfigureAwait(false);
 					else

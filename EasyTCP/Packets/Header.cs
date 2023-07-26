@@ -24,7 +24,7 @@ namespace EasyTCP.Packets
 	public struct HeaderPacket
 	{
 		public byte Version; // 1 byte
-		public long DataSize; // 8 byte
+		public int DataSize; // 4 byte
 		public int UID; // 4 byte
 		public PacketMode Mode; // 1 byte
 		public PacketType Type; // 1 byte

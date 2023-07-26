@@ -42,7 +42,7 @@ namespace TestClient
 			//new Examples.EntityManager.example_client().Example();
 			//new Examples.Ssl.example_client().Example();
 			//new Examples.Serialize.example_client().Example();
-			new Examples.Broadcast.example_client().Example();
+			//new Examples.Broadcast.example_client().Example();
 
 			//EasyTCP.Client client = new EasyTCP.Client();
 			//client.Connect("localhost", 2020);

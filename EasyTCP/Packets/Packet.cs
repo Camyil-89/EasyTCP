@@ -16,7 +16,11 @@ namespace EasyTCP.Packets
 
 		public delegate void CallbackAnswer(Packet packet);
 		public event CallbackAnswer CallbackAnswerEvent;
-		public virtual void Answer(Packet packet)
+		/// <summary>
+		/// Отправляет пакет с таким же UID чтобы клиент принял ожидаемый пакет.
+		/// </summary>
+		/// <param name="packet"></param>
+		public void Answer(Packet packet)
 		{
 			packet.Header.UID = Header.UID;
 			if (packet.Header.Type == PacketType.RSTStopwatch)
@@ -27,7 +31,20 @@ namespace EasyTCP.Packets
 			else
 				CallbackAnswerEvent?.Invoke(packet);
 		}
-		public virtual void AnswerNull()
+		/// <summary>
+		/// Сбрасывает таймер у клиента (таймер на ожидание пакета от сервера)
+		/// </summary>
+		public void ResetWatchdog()
+		{
+			var packet = new Packet();
+			packet.Header = Header;
+			packet.Header.Type = PacketType.RSTStopwatch;
+			CallbackAnswerEvent?.Invoke(packet);
+		}
+		/// <summary>
+		/// Отправляет пустой пакет только с заголовком.
+		/// </summary>
+		public void AnswerNull()
 		{
 			var packet = new Packet();
 			packet.Header = Header;

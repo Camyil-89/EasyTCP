@@ -82,12 +82,11 @@ namespace EasyTCP
 		public IEnumerable<ResponseInfo<T>> SendAndReceiveInfo<T>(T obj, int timeout = int.MaxValue)
 		{
 			CheckConnection();
-			Stopwatch stopwatch = Stopwatch.StartNew();
 			var info = Connection.SendAndWaitUnlimited(obj, PacketType.None, PacketMode.Info);
 			ReceiveInfo last_rec_info = new ReceiveInfo();
 			int count_server = 0;
 			int count_client = 0;
-			while (stopwatch.ElapsedMilliseconds < timeout)
+			while (info.Stopwatch.ElapsedMilliseconds < timeout)
 			{
 				if (TCPClient.Connected == false || Connection.IsWork == false)
 				{
@@ -118,16 +117,14 @@ namespace EasyTCP
 				Thread.Sleep(1);
 			}
 			if (info.Packet == null)
-				throw new ExceptionEasyTCPTimeout($"Timeout wait response! {stopwatch.ElapsedMilliseconds} \\ {timeout}");
+				throw new ExceptionEasyTCPTimeout($"Timeout wait response! {info.Stopwatch.ElapsedMilliseconds} \\ {timeout}");
 		}
 		public T SendAndWaitResponse<T>(object obj, int timeout = int.MaxValue)
 		{
 			CheckConnection();
-			Stopwatch stopwatch = Stopwatch.StartNew();
-
 
 			var info = Connection.SendAndWaitUnlimited(obj, PacketType.None, PacketMode.Hidden, PacketEntityManager.IsEntity(obj.GetType()));
-			while (stopwatch.ElapsedMilliseconds < timeout)
+			while (info.Stopwatch.ElapsedMilliseconds < timeout)
 			{
 				if (TCPClient.Connected == false || Connection.IsWork == false)
 				{
@@ -137,7 +134,7 @@ namespace EasyTCP
 					return Connection.Serialization.FromRaw<T>(info.Packet.Bytes);
 				Thread.Sleep(1);
 			}
-			throw new ExceptionEasyTCPTimeout($"Timeout wait response! {stopwatch.ElapsedMilliseconds} \\ {timeout}");
+			throw new ExceptionEasyTCPTimeout($"Timeout wait response! {info.Stopwatch.ElapsedMilliseconds} \\ {timeout}");
 		}
 		public void Send(object obj)
 		{
