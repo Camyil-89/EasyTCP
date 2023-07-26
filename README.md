@@ -30,7 +30,7 @@ public void Send(object obj)
 ### SendAndWaitResponse
 > Отправляет пакет и ждет ответ от сервера.
 ```C#
-### public T SendAndWaitResponse<T>(object obj, int timeout = int.MaxValue)
+public T SendAndWaitResponse<T>(object obj, int timeout = int.MaxValue)
 ```
 ### SendAndReceiveInfo
 > Отправляет пакет и получает ответ от сервера о том сколько байт он считал с этого пакета, и после когда сервер отправляет ответ, так же уведомляет сколько прочитал.
