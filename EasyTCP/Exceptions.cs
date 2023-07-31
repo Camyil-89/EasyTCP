@@ -6,6 +6,18 @@ using System.Threading.Tasks;
 
 namespace EasyTCP
 {
+	public class ExceptionEasyTCPSslNotEncrypted : Exception
+	{
+		public ExceptionEasyTCPSslNotEncrypted(string message)
+		: base(message)
+		{
+		}
+
+		public ExceptionEasyTCPSslNotEncrypted(string message, Exception inner)
+			: base(message, inner)
+		{
+		}
+	}
 	public class ExceptionEasyTCPSslNotAuthenticated : Exception
 	{
 		public ExceptionEasyTCPSslNotAuthenticated(string message)

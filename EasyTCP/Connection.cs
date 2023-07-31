@@ -23,8 +23,8 @@ namespace EasyTCP
 		public Packet Packet { get; set; } = null;
 		public Stopwatch Stopwatch { get; set; } = Stopwatch.StartNew();
 		public bool RSTStopwatch { get; set; } = false;
-		public List<ReceiveInfo> ReceiveServer { get; set; } = new List<ReceiveInfo>();
-		public List<ReceiveInfo> ReceiveClient { get; set; } = new List<ReceiveInfo>();
+		public ReceiveInfo ReceiveServer { get; set; }
+		public ReceiveInfo ReceiveClient { get; set; }
 	}
 	public enum TypeConnection : byte
 	{
@@ -41,7 +41,7 @@ namespace EasyTCP
 		private Dictionary<int, WaitInfoPacket> WaitPackets = new Dictionary<int, WaitInfoPacket>();
 		private NetworkStream NetworkStream { get; set; }
 		private SslStream SslStream { get; set; } = null;
-		private byte[] Buffer { get; set; } = new byte[1024 * 64];
+		private byte[] Buffer { get; set; } = new byte[1024 * 512];
 
 		/// <summary>
 		/// Client
@@ -93,7 +93,10 @@ namespace EasyTCP
 				{
 					throw new ExceptionEasyTCPSslNotAuthenticated("Ssl not Authenticated");
 				}
-
+				if (SslStream.IsEncrypted == false)
+				{
+					throw new ExceptionEasyTCPSslNotAuthenticated("Ssl not Encrypted");
+				}
 			}
 			else
 			{
@@ -103,10 +106,13 @@ namespace EasyTCP
 			}
 
 		}
+		public void InitSerialization()
+		{
+			Serialization.InitConnection(this);
+		}
 		public void Init()
 		{
 			RXHandler();
-			Serialization.InitConnection(this);
 		}
 
 		public async Task Send(object data, HeaderPacket header)
@@ -138,21 +144,45 @@ namespace EasyTCP
 			data.CopyTo(result, struct_bytes.Length);
 			try
 			{
+				ReceiveInfo receiveInfo = new ReceiveInfo() { TotalNeedReceive = result.Length };
+				int bytes_read_to_send_info = 0;
+
+				for (int offset = 0; offset < result.Length; offset += Buffer.Length)
+				{
+					int remainingBytes = result.Length - offset;
+					int bytesToSend = Math.Min(Buffer.Length, remainingBytes);
+					if (TypeStreamConnection == TypeStreamConnection.NotEncrypted)
+					{
+						await NetworkStream.WriteAsync(result, offset, bytesToSend);
+					}
+					else
+					{
+						await SslStream.WriteAsync(result, offset, bytesToSend);
+					}
+					receiveInfo.Receive += bytesToSend;
+					bytes_read_to_send_info += bytesToSend;
+					Statistics.SentBytes += bytesToSend;
+					Statistics.UpdateSent();
+					if (WaitPackets.ContainsKey(header.UID) && header.Mode == PacketMode.Info && bytes_read_to_send_info >= BlockSizeForSendInfoReceive)
+					{
+						bytes_read_to_send_info = 0;
+						WaitPackets[header.UID].RSTStopwatch = true;
+						WaitPackets[header.UID].ReceiveServer = new ReceiveInfo { Receive = receiveInfo.Receive, TotalNeedReceive = receiveInfo.TotalNeedReceive };
+						WaitPackets[header.UID].Stopwatch.Restart();
+					}
+				}
 				if (TypeStreamConnection == TypeStreamConnection.NotEncrypted)
 				{
-					await NetworkStream.WriteAsync(result);
 					await NetworkStream.FlushAsync();
 				}
 				else
 				{
-					await SslStream.WriteAsync(result);
 					await SslStream.FlushAsync();
 				}
 				Statistics.SentPackets++;
-				Statistics.SentBytes += result.Length;
 				//Console.WriteLine($"TX: {data.Length} | {result.Length} ({header.UID})");
 			}
-			catch (Exception ex) { }
+			catch (Exception ex) { Console.WriteLine(ex); }
 		}
 		public async Task<Packet> WaitPacketConnection()
 		{
@@ -196,10 +226,6 @@ namespace EasyTCP
 							NetworkStream = null;
 							return;
 						}
-						else if (readData.Header.Type == PacketType.Serialize)
-						{
-							Task.Run(() => { CallbackReceiveSerializationEvent?.Invoke(readData); });
-						}
 						else if (WaitPackets.ContainsKey(readData.Header.UID))
 						{
 							if (readData.Header.Type == PacketType.RSTStopwatch)
@@ -212,10 +238,14 @@ namespace EasyTCP
 							{
 								WaitPackets[readData.Header.UID].Stopwatch.Restart();
 								WaitPackets[readData.Header.UID].RSTStopwatch = true;
-								WaitPackets[readData.Header.UID].ReceiveServer.Add(Serialization.FromRaw<ReceiveInfo>(readData.Bytes));
+								WaitPackets[readData.Header.UID].ReceiveServer = Serialization.FromRaw<ReceiveInfo>(readData.Bytes);
 							}
 							else
 								WaitPackets[readData.Header.UID].Packet = readData;
+						}
+						else if (readData.Header.Type == PacketType.Serialize)
+						{
+							await Task.Run(() => { CallbackReceiveSerializationEvent?.Invoke(readData); });
 						}
 						else if (readData.Header.Type == PacketType.Ping)
 						{
@@ -223,7 +253,7 @@ namespace EasyTCP
 						}
 						else
 						{
-							Task.Run(() => { CallbackReceiveEvent?.Invoke(readData); });
+							await Task.Run(() => { CallbackReceiveEvent?.Invoke(readData); });
 						}
 					});
 				}
@@ -304,17 +334,18 @@ namespace EasyTCP
 						bytes_read_to_send_info = 0;
 						WaitPackets[header.UID].RSTStopwatch = true;
 						WaitPackets[header.UID].IsReadFromServer = true;
-						WaitPackets[header.UID].ReceiveClient.Add(new ReceiveInfo { Receive = totalBytesRead, TotalNeedReceive = header.DataSize });
+						WaitPackets[header.UID].ReceiveClient = new ReceiveInfo { Receive = totalBytesRead, TotalNeedReceive = header.DataSize };
 						WaitPackets[header.UID].Stopwatch.Restart();
 					}
-					if (header.Mode == PacketMode.Info && bytes_read_to_send_info >= BlockSizeForSendInfoReceive)
-					{
-						bytes_read_to_send_info = 0;
-						receiveInfo.Receive = totalBytesRead;
-						receiveInfo.TotalNeedReceive = header.DataSize;
-						Send(receiveInfo, header_rec_info);
-					}
+					//if (header.Mode == PacketMode.Info && bytes_read_to_send_info >= BlockSizeForSendInfoReceive)
+					//{
+					//	bytes_read_to_send_info = 0;
+					//	receiveInfo.Receive = totalBytesRead;
+					//	receiveInfo.TotalNeedReceive = header.DataSize;
+					//	//Send(receiveInfo, header_rec_info);
+					//}
 					Statistics.ReceivedBytes += bytesRead;
+					Statistics.UpdateReceived();
 				}
 				if (WaitPackets.ContainsKey(header.UID) && header.Type != PacketType.ReceiveInfo)
 				{
@@ -322,15 +353,15 @@ namespace EasyTCP
 					WaitPackets[header.UID].IsReadFromServer = true;
 					receiveInfo.Receive = totalBytesRead;
 					receiveInfo.TotalNeedReceive = header.DataSize;
-					WaitPackets[header.UID].ReceiveClient.Add(new ReceiveInfo() { Receive = totalBytesRead, TotalNeedReceive = header.DataSize });
+					WaitPackets[header.UID].ReceiveClient = new ReceiveInfo() { Receive = totalBytesRead, TotalNeedReceive = header.DataSize };
 					WaitPackets[header.UID].Stopwatch.Restart();
 				}
-				if (header.Mode == PacketMode.Info)
-				{
-					receiveInfo.Receive = totalBytesRead;
-					receiveInfo.TotalNeedReceive = header.DataSize;
-					Send(receiveInfo, header_rec_info);
-				}
+				//if (header.Mode == PacketMode.Info)
+				//{
+				//	receiveInfo.Receive = totalBytesRead;
+				//	receiveInfo.TotalNeedReceive = header.DataSize;
+				//	//Send(receiveInfo, header_rec_info);
+				//}
 
 
 				if (totalBytesRead < header.DataSize)

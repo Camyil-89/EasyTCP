@@ -26,12 +26,12 @@ namespace EasyTCP
 		/// </summary>
 		public bool ReceiveFromServer = false;
 
-        public ResponseInfo()
-        {
+		public ResponseInfo()
+		{
 			object obj = null;
 			Packet = (T)obj;
-        }
-    }
+		}
+	}
 
 	public class Client
 	{
@@ -67,8 +67,6 @@ namespace EasyTCP
 			Connection.PortServer = port;
 			if (IsSsl)
 				Connection.EnableSsl(Certificate, IsCheckCert);
-			if (serialization != null)
-				Connection.Serialization = serialization;
 
 			Connection.Init();
 			Connection.CallbackReceiveEvent += Connection_CallbackReceiveEvent;
@@ -78,7 +76,13 @@ namespace EasyTCP
 				throw new ExceptionEasyTCPFirewall($"code: {answer.Firewall.Code} | {answer.Firewall.Answer}");
 			}
 			else if (answer.Type == PacketConnectionType.OK)
+			{
+				if (serialization != null)
+					Connection.Serialization = serialization;
+				Connection.InitSerialization();
+				Connection.BlockSizeForSendInfoReceive = answer.BlockSize;
 				return true;
+			}
 			return false;
 		}
 		/// <summary>
@@ -153,15 +157,15 @@ namespace EasyTCP
 					yield return new ResponseInfo<T>() { Packet = Connection.Serialization.FromRaw<T>(info.Packet.Bytes), Info = last_rec_info };
 					break;
 				}
-				else if (count_server != info.ReceiveServer.Count && info.IsReadFromServer == false)
+				else if (last_rec_info.Receive != info.ReceiveServer.Receive && info.IsReadFromServer == false)
 				{
-					last_rec_info = info.ReceiveServer.Last();
+					last_rec_info = info.ReceiveServer;
 					count_server++;
 					yield return new ResponseInfo<T>() { Info = last_rec_info };
 				}
-				else if (count_client != info.ReceiveClient.Count && info.IsReadFromServer == true)
+				else if (last_rec_info.Receive != info.ReceiveClient.Receive && info.IsReadFromServer == true)
 				{
-					last_rec_info = info.ReceiveClient.Last();
+					last_rec_info = info.ReceiveClient;
 					count_client++;
 					yield return new ResponseInfo<T>() { Info = last_rec_info, ReceiveFromServer = true };
 				}

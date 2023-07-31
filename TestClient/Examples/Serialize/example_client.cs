@@ -28,7 +28,7 @@ namespace TestClient.Examples.Serialize
 
 			client.PacketEntityManager.RegistrationPacket<SecureSerializeTestPacket>(1);
 			client.Connect("localhost", 2020, sec);
-
+			Console.WriteLine("ASD");
 			while (true)
 			{
 				Console.WriteLine(client.SendAndWaitResponse<SecureSerializeTestPacket>(new SecureSerializeTestPacket()));

@@ -17,6 +17,7 @@ namespace EasyTCP.Packets
 	{
 		public PacketFirewall Firewall;
 		public PacketConnectionType Type;
+		public int BlockSize;
 
 		public static PacketConnection Create(PacketConnectionType type)
 		{

@@ -96,7 +96,6 @@ namespace EasyTCP
 				connection.CallbackReceiveEvent += Receive;
 				connection.BlockSizeForSendInfoReceive = BlockSizeForSendInfoReceive;
 				connection.Firewall = Firewall;
-				connection.Serialization = Serialization;
 
 				serverClient.Connection = connection;
 				var packet_client = connection.WaitPacketConnection().Result;
@@ -107,6 +106,7 @@ namespace EasyTCP
 					var connect_packet = Serialization.FromRaw<PacketConnection>(packet_client.Bytes);
 					connect_packet.Firewall = Firewall.ValidateConnectAnswer(serverClient);
 					connect_packet.Type = PacketConnectionType.Abort;
+					connect_packet.BlockSize = BlockSizeForSendInfoReceive;
 					packet_client.Bytes = Serialization.Raw(connect_packet);
 					serverClient.Connection.WriteStream(packet_client.Bytes, packet_client.Header).Wait();
 					Thread.Sleep(3000);
@@ -117,6 +117,8 @@ namespace EasyTCP
 				else
 				{
 					serverClient.Connection.WriteStream(packet_client.Bytes, packet_client.Header).Wait();
+					connection.Serialization = Serialization;
+					serverClient.Connection.InitSerialization();
 					Clients.Add(serverClient);
 					CallbackConnectClientEvent?.Invoke(serverClient);
 					while (client != null && client.Connected && serverClient.Connection != null && serverClient.Connection.IsWork == true)
@@ -124,12 +126,13 @@ namespace EasyTCP
 						Thread.Sleep(250);
 					}
 				}
-				
 
-				
-				
-				
-			} catch (Exception e) { }
+
+
+
+
+			}
+			catch (Exception e) { }
 			client.Close();
 			client.Dispose();
 			CallbackDisconnectClientEvent?.Invoke(serverClient);
