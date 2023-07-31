@@ -15,7 +15,10 @@ namespace EasyTCP.Packets
 		Abort = 6,
 		InitConnection = 7,
 	}
-	public enum PacketMode: byte
+	/// <summary>
+	/// на данный момент 01.08.2023 не используется и являеться "запасным" параметром. позже будет решаться нужен ли он или нет.
+	/// </summary>
+	public enum PacketMode: byte 
 	{
 		Hidden = 0,
 		Info = 1,
@@ -23,12 +26,12 @@ namespace EasyTCP.Packets
 	[StructLayout(LayoutKind.Sequential, Pack = 1)]
 	public struct HeaderPacket
 	{
-		public byte Version; // 1 byte
-		public int DataSize; // 4 byte
-		public int UID; // 4 byte
-		public PacketMode Mode; // 1 byte
-		public PacketType Type; // 1 byte
-		public ushort TypePacket; // 2 byte
+		public byte Version { get; set; } // 1 byte
+		public int DataSize { get; set; } // 4 byte
+		public int UID { get; set; } // 4 byte
+		public PacketMode Mode { get; set; } // 1 byte
+		public PacketType Type { get; set; } // 1 byte
+		public ushort TypePacket { get; set; } // 2 byte
 		public static HeaderPacket Create(PacketType type = PacketType.None, PacketMode mode = PacketMode.Hidden)
 		{
 			var x = new HeaderPacket();
