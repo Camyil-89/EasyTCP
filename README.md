@@ -76,7 +76,7 @@ public T SendAndWaitResponse<T>(object obj, int timeout = int.MaxValue)
 ### SendAndReceiveInfo
 > Отправляет пакет и получает ответ от сервера о том сколько байт он считал с этого пакета, и после когда сервер отправляет ответ, так же уведомляет сколько прочитал.
 > 
-> !!!Увеличивает накладные расходы, чтобы их уменьшить увеличьте данный параметр у сервера BlockSizeForSendInfoReceive (его можно и у клиента задать)!!!
+> Не актуально на данный момент. !!!Увеличивает накладные расходы, чтобы их уменьшить увеличьте данный параметр у сервера BlockSizeForSendInfoReceive (его можно и у клиента задать)!!!
 ```C#
 public IEnumerable<ResponseInfo<T>> SendAndReceiveInfo<T>(T obj, int timeout = int.MaxValue)
 ```
