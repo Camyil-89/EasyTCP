@@ -230,7 +230,6 @@ namespace EasyTCP
 						{
 							if (readData.Header.Type == PacketType.RSTStopwatch)
 							{
-								//Console.WriteLine($"[RST] {readData.Header.Type};{readData.Header.UID}");
 								WaitPackets[readData.Header.UID].Stopwatch.Restart();
 								WaitPackets[readData.Header.UID].RSTStopwatch = true;
 							}
@@ -337,13 +336,6 @@ namespace EasyTCP
 						WaitPackets[header.UID].ReceiveClient = new ReceiveInfo { Receive = totalBytesRead, TotalNeedReceive = header.DataSize };
 						WaitPackets[header.UID].Stopwatch.Restart();
 					}
-					//if (header.Mode == PacketMode.Info && bytes_read_to_send_info >= BlockSizeForSendInfoReceive)
-					//{
-					//	bytes_read_to_send_info = 0;
-					//	receiveInfo.Receive = totalBytesRead;
-					//	receiveInfo.TotalNeedReceive = header.DataSize;
-					//	//Send(receiveInfo, header_rec_info);
-					//}
 					Statistics.ReceivedBytes += bytesRead;
 					Statistics.UpdateReceived();
 				}
@@ -356,17 +348,10 @@ namespace EasyTCP
 					WaitPackets[header.UID].ReceiveClient = new ReceiveInfo() { Receive = totalBytesRead, TotalNeedReceive = header.DataSize };
 					WaitPackets[header.UID].Stopwatch.Restart();
 				}
-				//if (header.Mode == PacketMode.Info)
-				//{
-				//	receiveInfo.Receive = totalBytesRead;
-				//	receiveInfo.TotalNeedReceive = header.DataSize;
-				//	//Send(receiveInfo, header_rec_info);
-				//}
 
 
 				if (totalBytesRead < header.DataSize)
 				{
-					//Console.WriteLine($"ERROR READ");
 					return null;
 				}
 				read_data.Bytes = ms.ToArray();
@@ -377,7 +362,6 @@ namespace EasyTCP
 				if (Firewall == null)
 					return read_data;
 				await Send(Firewall.ValidateRawAnswer(read_data.Bytes), HeaderPacket.CreateFirewallAnswer(header.UID));
-				//Console.WriteLine($"[CONNECTION FIREWALL] ValidateHeader");
 				return null;
 			}
 		}
