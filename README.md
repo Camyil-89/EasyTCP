@@ -28,7 +28,6 @@ EasyTCP способно передавать большие объемы дан
 			<td colspan="1" align="center"></td>
 			<td colspan="1" align="center"></td>
 			<td colspan="1" align="center"></td>
-			<td colspan="1" align="center"></td>
         </tr>
 		<tr>
             <td colspan="8" align="center">Данные (0 - 2147483647 Байт)</td>
