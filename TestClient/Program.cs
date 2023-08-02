@@ -38,7 +38,7 @@ namespace TestClient
 	{
 		static void Main(string[] args)
 		{
-			//new Examples.Simple.example_client().Example();
+			new Examples.Simple.example_client().Example();
 			//new Examples.EntityManager.example_client().Example();
 			//new Examples.Ssl.example_client().Example();
 			//new Examples.Serialize.example_client().Example();

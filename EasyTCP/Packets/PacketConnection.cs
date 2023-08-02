@@ -10,7 +10,7 @@ namespace EasyTCP.Packets
 	public enum PacketConnectionType: byte
 	{
 		Abort = 0,
-		OK = 1,
+		OK = 1
 	}
 	[StructLayout(LayoutKind.Sequential, Pack = 1)]
 	public struct PacketConnection

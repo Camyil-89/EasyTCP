@@ -41,8 +41,45 @@ namespace TestClient.Examples.Simple
 		public void Example()
 		{
 			EasyTCP.Client client = new EasyTCP.Client();
-			client.Connect("localhost", 2020);
-			Console.WriteLine("Накладные расходы для подключения: ");
+			//client.Connect("localhost", 2020);
+
+			foreach (var i in client.ConnectWithInfo("localhost", 2020))
+			{
+				switch (i.Status)
+				{
+					case EasyTCP.ConnectStatus.Connecting:
+						Console.WriteLine("Подключение к серверу...");
+						break;
+					case EasyTCP.ConnectStatus.WaitResponseFromServer:
+						Console.WriteLine("Ожидание ответа от сервера...");
+						break;
+					case EasyTCP.ConnectStatus.FailConnectBlockFirewall:
+						Console.WriteLine($"Ошибка подключения, сервер заблокировал подключение: {i.Firewall.Code} | {i.Firewall.Answer}");
+						break;
+					case EasyTCP.ConnectStatus.NotFoundServer:
+						Console.WriteLine("Сервер не найден!");
+						break;
+					case EasyTCP.ConnectStatus.OK:
+						Console.WriteLine("Подключение к серверу успешно!");
+						break;
+					case EasyTCP.ConnectStatus.TimeoutConnectToServer:
+						Console.WriteLine("Время ожидания подключения истекло!");
+						break;
+					case EasyTCP.ConnectStatus.InitConnect:
+						Console.WriteLine("Инициализация подключения...");
+						break;
+					case EasyTCP.ConnectStatus.InitSerialization:
+						Console.WriteLine("Инициализация сириализации...");
+						break;
+					case EasyTCP.ConnectStatus.Fail:
+						Console.WriteLine("Ошибка подключения!");
+						break;
+					default:
+						break;
+				}
+			}
+
+			Console.WriteLine("\nНакладные расходы для подключения: ");
 			Console.WriteLine(client.Connection.Statistics);
 			var answer = client.SendAndWaitResponse<MyPacket>(new MyPacket(), 1000);
 			Console.WriteLine($"[FROM SERVER] {answer}");

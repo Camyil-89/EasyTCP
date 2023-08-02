@@ -32,6 +32,26 @@ namespace EasyTCP
 			Packet = (T)obj;
 		}
 	}
+	public enum ConnectStatus: byte
+	{
+		Connecting = 0,
+		WaitResponseFromServer = 1,
+		FailConnectBlockFirewall = 2,
+		NotFoundServer = 3,
+		OK = 4,
+		TimeoutConnectToServer = 5,
+		InitConnect = 6,
+		InitSerialization = 7,
+		Fail = 8,
+	}
+	public class ConnectInfo
+	{
+		public ConnectStatus Status { get; set; } = ConnectStatus.Connecting;
+		/// <summary>
+		/// if Status == FailConnectBlockFirewall
+		/// </summary>
+		public PacketFirewall Firewall { get; set; }
+	}
 
 	public class Client
 	{
@@ -60,30 +80,81 @@ namespace EasyTCP
 		/// <returns>bool</returns>
 		public bool Connect(string host, int port, ISerialization serialization = null, int timeout = 5000)
 		{
-			TCPClient = new TcpClient();
-			TCPClient.Connect(host, port);
-			Connection = new Connection(TCPClient.GetStream(), TypeConnection.Client, 700, 700);
-			Connection.ServerName = host;
-			Connection.PortServer = port;
-			if (IsSsl)
-				Connection.EnableSsl(Certificate, IsCheckCert);
 
-			Connection.Init();
-			Connection.CallbackReceiveEvent += Connection_CallbackReceiveEvent;
-			var answer = SendAndWaitResponse<PacketConnection>(PacketConnection.Create(PacketConnectionType.OK), PacketType.InitConnection, PacketMode.Hidden, 0, timeout);
-			if (answer.Type == PacketConnectionType.Abort)
+			foreach (var i in ConnectWithInfo(host, port, serialization, timeout))
 			{
-				throw new ExceptionEasyTCPFirewall($"code: {answer.Firewall.Code} | {answer.Firewall.Answer}");
-			}
-			else if (answer.Type == PacketConnectionType.OK)
-			{
-				if (serialization != null)
-					Connection.Serialization = serialization;
-				Connection.InitSerialization();
-				Connection.BlockSizeForSendInfoReceive = answer.BlockSize;
-				return true;
+				switch (i.Status)
+				{
+					case ConnectStatus.Connecting:
+						break;
+					case ConnectStatus.WaitResponseFromServer:
+						break;
+					case ConnectStatus.FailConnectBlockFirewall:
+						throw new ExceptionEasyTCPFirewall($"code: {i.Firewall.Code} | {i.Firewall.Answer}");
+						break;
+					case ConnectStatus.NotFoundServer:
+						break;
+					case ConnectStatus.OK:
+						return true;
+						break;
+					case ConnectStatus.TimeoutConnectToServer:
+						throw new TimeoutException();
+						break;
+					case ConnectStatus.InitConnect:
+						break;
+					case ConnectStatus.InitSerialization:
+						break;
+					case ConnectStatus.Fail:
+						return false;
+						break;
+					default:
+						break;
+				}
 			}
 			return false;
+		}
+		public IEnumerable<ConnectInfo> ConnectWithInfo(string host, int port, ISerialization serialization = null, int timeout = 5000)
+		{
+			TCPClient = new TcpClient();
+			yield return new ConnectInfo() { Status = ConnectStatus.Connecting };
+			IAsyncResult ar = TCPClient.BeginConnect(host, port, null, null);
+			if (!ar.AsyncWaitHandle.WaitOne(TimeSpan.FromMilliseconds(timeout), false))
+			{
+				TCPClient.Close();
+				yield return new ConnectInfo() { Status = ConnectStatus.TimeoutConnectToServer };
+			}
+			else
+			{
+				TCPClient.EndConnect(ar);
+				yield return new ConnectInfo() { Status = ConnectStatus.InitConnect };
+				Connection = new Connection(TCPClient.GetStream(), TypeConnection.Client, 700, 700);
+				Connection.ServerName = host;
+				Connection.PortServer = port;
+				if (IsSsl)
+					Connection.EnableSsl(Certificate, IsCheckCert);
+
+				Connection.Init();
+				Connection.CallbackReceiveEvent += Connection_CallbackReceiveEvent;
+				yield return new ConnectInfo() { Status = ConnectStatus.WaitResponseFromServer };
+				var answer = SendAndWaitResponse<PacketConnection>(PacketConnection.Create(PacketConnectionType.OK), PacketType.InitConnection, PacketMode.Hidden, 0, timeout);
+				if (answer.Type == PacketConnectionType.Abort)
+				{
+					yield return new ConnectInfo() { Status = ConnectStatus.FailConnectBlockFirewall, Firewall = answer.Firewall };
+				}
+				else if (answer.Type == PacketConnectionType.OK)
+				{
+					yield return new ConnectInfo() { Status = ConnectStatus.InitSerialization };
+					if (serialization != null)
+						Connection.Serialization = serialization;
+					Connection.InitSerialization();
+					Connection.BlockSizeForSendInfoReceive = answer.BlockSize;
+					yield return new ConnectInfo() { Status = ConnectStatus.OK };
+				}
+				else
+				{
+					yield return new ConnectInfo() { Status = ConnectStatus.Fail };
+				}
+			}
 		}
 		/// <summary>
 		/// Закрывает подключение
