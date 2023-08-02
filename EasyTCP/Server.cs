@@ -14,6 +14,7 @@ namespace EasyTCP
 {
 	public class ServerClient
 	{
+		public Client Client { get; set; }
 		public Connection Connection { get; set; }
 		public TcpClient TCP { get; set; }
 		public string IpPort { get; set; }
@@ -87,20 +88,19 @@ namespace EasyTCP
 			serverClient.IpPort = client.Client.RemoteEndPoint.ToString();
 			try
 			{
-				Connection connection = new Connection(client.GetStream(), TypeConnection.Server);
+				serverClient.Connection = new Connection(client.GetStream(), TypeConnection.Server);
 				if (IsSsl)
 				{
-					connection.EnableSsl(Certificate, IsCheckCert);
+					serverClient.Connection.EnableSsl(Certificate, IsCheckCert);
 				}
-				connection.ServerClient = serverClient;
-				connection.CallbackReceiveEvent += Receive;
-				connection.BlockSizeForSendInfoReceive = BlockSizeForSendInfoReceive;
-				connection.Firewall = Firewall;
+				serverClient.Connection.ServerClient = serverClient;
+				serverClient.Connection.BlockSizeForSendInfoReceive = BlockSizeForSendInfoReceive;
+				serverClient.Connection.Firewall = Firewall;
+				serverClient.Connection.CallbackReceiveEvent += Receive;
 
-				serverClient.Connection = connection;
-				var packet_client = connection.WaitPacketConnection().Result;
+				var packet_client = serverClient.Connection.WaitPacketConnection().Result;
 
-				connection.Init();
+				serverClient.Connection.Init();
 				if (Firewall != null && Firewall.ValidateConnect(serverClient) == false)
 				{
 					var connect_packet = Serialization.FromRaw<PacketConnection>(packet_client.Bytes);
@@ -117,8 +117,12 @@ namespace EasyTCP
 				else
 				{
 					serverClient.Connection.WriteStream(packet_client.Bytes, packet_client.Header).Wait();
-					connection.Serialization = Serialization;
+					serverClient.Connection.Serialization = Serialization;
 					serverClient.Connection.InitSerialization();
+					serverClient.Client = new Client();
+					serverClient.Client.TCPClient = serverClient.TCP;
+					serverClient.Client.Connection = serverClient.Connection;
+					serverClient.Client.PacketEntityManager = PacketEntityManager;
 					Clients.Add(serverClient);
 					CallbackConnectClientEvent?.Invoke(serverClient);
 					while (client != null && client.Connected && serverClient.Connection != null && serverClient.Connection.IsWork == true)
@@ -126,13 +130,8 @@ namespace EasyTCP
 						Thread.Sleep(250);
 					}
 				}
-
-
-
-
-
 			}
-			catch (Exception e) { }
+			catch (Exception e) { Console.WriteLine(e); }
 			client.Close();
 			client.Dispose();
 			CallbackDisconnectClientEvent?.Invoke(serverClient);

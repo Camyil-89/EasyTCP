@@ -180,9 +180,9 @@ namespace EasyTCP
 					await SslStream.FlushAsync();
 				}
 				Statistics.SentPackets++;
-				//Console.WriteLine($"TX: {data.Length} | {result.Length} ({header.UID})");
+				//Console.WriteLine($"TX: {data.Length} | {result.Length} ({header.UID}) {header.TypePacket} {header.Type}");
 			}
-			catch (Exception ex) { Console.WriteLine(ex); }
+			catch (Exception ex) {  }
 		}
 		public async Task<Packet> WaitPacketConnection()
 		{
@@ -367,10 +367,13 @@ namespace EasyTCP
 		}
 		public void Abort()
 		{
-			var header = HeaderPacket.Create(PacketType.Abort);
-			Send(null, header).Wait();
-			NetworkStream.Close();
-			NetworkStream = null;
+			if (NetworkStream != null)
+			{
+				var header = HeaderPacket.Create(PacketType.Abort);
+				Send(null, header).Wait();
+				NetworkStream.Close();
+				NetworkStream = null;
+			}
 		}
 		public void Send(object data, PacketType type = PacketType.None, PacketMode mode = PacketMode.Hidden, ushort type_packet = 0)
 		{

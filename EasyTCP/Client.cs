@@ -1,7 +1,9 @@
-﻿using EasyTCP.Packets;
+﻿using EasyTCP.Firewall;
+using EasyTCP.Packets;
 using EasyTCP.Serialize;
 using EasyTCP.Utilities;
 using System.Diagnostics;
+using System.Net.Http;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 
@@ -32,7 +34,7 @@ namespace EasyTCP
 			Packet = (T)obj;
 		}
 	}
-	public enum ConnectStatus: byte
+	public enum ConnectStatus : byte
 	{
 		Connecting = 0,
 		WaitResponseFromServer = 1,
@@ -58,19 +60,18 @@ namespace EasyTCP
 		private X509Certificate Certificate;
 		private bool IsSsl = false;
 		private bool IsCheckCert = true;
-		private TcpClient TCPClient { get; set; }
+		public TcpClient TCPClient { get; set; }
 		/// <summary>
 		/// Подключение к серверу (низкий уровень взаимодействия)
 		/// </summary>
-		public Connection Connection { get; private set; }
+		public Connection Connection { get; set; }
 		/// <summary>
 		/// Менеджер пакетов.
 		/// </summary>
-		public PacketEntityManager PacketEntityManager { get; private set; } = new PacketEntityManager();
+		public PacketEntityManager PacketEntityManager { get; set; } = new PacketEntityManager();
 
 		public delegate void CallbackReceiveFirewall(PacketFirewall packet);
 		public event CallbackReceiveFirewall CallbackReceiveFirewallEvent;
-
 		/// <summary>
 		/// Подключение к серверу
 		/// </summary>
@@ -161,10 +162,17 @@ namespace EasyTCP
 		/// </summary>
 		public void Close()
 		{
-			Connection.Abort();
-			TCPClient.Close();
-			TCPClient.Dispose();
-			TCPClient = null;
+			if (Connection != null)
+			{
+				Connection.Abort();
+			}
+			if (TCPClient != null)
+			{
+				TCPClient.Close();
+				TCPClient.Dispose();
+				TCPClient = null;
+			}
+
 		}
 		private void CheckConnection()
 		{
@@ -207,7 +215,7 @@ namespace EasyTCP
 		public IEnumerable<ResponseInfo<T>> SendAndReceiveInfo<T>(T obj, int timeout = int.MaxValue)
 		{
 			CheckConnection();
-			var info = Connection.SendAndWaitUnlimited(obj, PacketType.None, PacketMode.Info);
+			var info = Connection.SendAndWaitUnlimited(obj, PacketType.None, PacketMode.Info, PacketEntityManager.IsEntity(obj.GetType()));
 			ReceiveInfo last_rec_info = new ReceiveInfo();
 			int count_server = 0;
 			int count_client = 0;
@@ -240,7 +248,8 @@ namespace EasyTCP
 					count_client++;
 					yield return new ResponseInfo<T>() { Info = last_rec_info, ReceiveFromServer = true };
 				}
-				Thread.Sleep(1);
+				if (info.Stopwatch.ElapsedMilliseconds >= 50)
+					Thread.Sleep(1);
 			}
 			if (info.Packet == null)
 				throw new ExceptionEasyTCPTimeout($"Timeout wait response! {info.Stopwatch.ElapsedMilliseconds} \\ {timeout}");
@@ -277,7 +286,8 @@ namespace EasyTCP
 				}
 				if (info.Packet != null)
 					return Connection.Serialization.FromRaw<T>(info.Packet.Bytes);
-				Thread.Sleep(1);
+				if (info.Stopwatch.ElapsedMilliseconds >= 50)
+					Thread.Sleep(1);
 			}
 			throw new ExceptionEasyTCPTimeout($"Timeout wait response! {info.Stopwatch.ElapsedMilliseconds} \\ {timeout}");
 		}
