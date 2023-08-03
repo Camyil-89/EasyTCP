@@ -52,7 +52,7 @@ namespace EasyTCP
 		/// </summary>
 		public int PortServer { get; set; }
 		public TypeStreamConnection TypeStreamConnection { get; set; }
-		public bool IsWork => NetworkStream != null || SslStream != null;
+		public bool IsWork => (NetworkStream != null || SslStream != null) && (NetworkStream != null && NetworkStream.CanWrite && NetworkStream.CanRead);
 		public ServerClient ServerClient { get; set; } = null;
 		public TypeConnection Mode { get; private set; } = TypeConnection.Client;
 		public ISerialization Serialization { get; set; } = new StandardSerialize();

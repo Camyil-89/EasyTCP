@@ -9,6 +9,7 @@ using EasyTCP.Packets;
 using EasyTCP.Firewall;
 using EasyTCP.Utilities;
 using System.Security.Cryptography.X509Certificates;
+using EasyTCP.Serialize;
 
 namespace EasyTCP
 {
@@ -30,7 +31,7 @@ namespace EasyTCP
 		public List<ServerClient> Clients { get; private set; } = new List<ServerClient>();
 		public TcpListener TcpListener { get; private set; }
 		public IFirewall Firewall { get; private set; }
-		public PacketEntityManager PacketEntityManager { get; private set; } = new PacketEntityManager();
+		public PacketEntityManager PacketEntityManager { get; set; } = new PacketEntityManager();
 
 		public delegate void CallbackReceive(Packet packet);
 		public event CallbackReceive CallbackReceiveEvent;
@@ -103,11 +104,11 @@ namespace EasyTCP
 				serverClient.Connection.Init();
 				if (Firewall != null && Firewall.ValidateConnect(serverClient) == false)
 				{
-					var connect_packet = Serialization.FromRaw<PacketConnection>(packet_client.Bytes);
+					var connect_packet = serverClient.Connection.Serialization.FromRaw<PacketConnection>(packet_client.Bytes);
 					connect_packet.Firewall = Firewall.ValidateConnectAnswer(serverClient);
 					connect_packet.Type = PacketConnectionType.Abort;
 					connect_packet.BlockSize = BlockSizeForSendInfoReceive;
-					packet_client.Bytes = Serialization.Raw(connect_packet);
+					packet_client.Bytes = serverClient.Connection.Serialization.Raw(connect_packet);
 					serverClient.Connection.WriteStream(packet_client.Bytes, packet_client.Header).Wait();
 					Thread.Sleep(3000);
 					serverClient.Connection.Abort();
@@ -117,6 +118,7 @@ namespace EasyTCP
 				else
 				{
 					serverClient.Connection.WriteStream(packet_client.Bytes, packet_client.Header).Wait();
+					
 					serverClient.Connection.Serialization = Serialization;
 					serverClient.Connection.InitSerialization();
 					serverClient.Client = new Client();

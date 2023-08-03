@@ -50,5 +50,13 @@ namespace EasyTCP.Packets
 			packet.Header = Header;
 			CallbackAnswerEvent?.Invoke(packet);
 		}
+
+		public void SafeAnswerNull()
+		{
+			try
+			{
+				AnswerNull();
+			} catch { }
+		}
 	}
 }

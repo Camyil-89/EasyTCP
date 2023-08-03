@@ -174,6 +174,15 @@ namespace EasyTCP
 			}
 
 		}
+		public bool CheckConnectionWithServer()
+		{
+			try
+			{
+				CheckConnection();
+				return true;
+			} catch { }
+			return false;
+		}
 		private void CheckConnection()
 		{
 			if (TCPClient.Connected == false || Connection == null || Connection.IsWork == false)
