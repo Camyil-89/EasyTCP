@@ -1,0 +1,23 @@
+﻿using EasyTCP.Packets;
+using EasyTCP.Serialize;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace EasyTCP.Utilities
+{
+	public class PacketEntity
+	{
+		public ushort Type { get; set; } = 0;
+		public Type ObjType { get; set; }
+		public delegate void CallbackReceive(object packet, Packet rawPacket);
+		public event CallbackReceive CallbackReceiveEvent;
+
+		public void Call(ISerialization serialization, Packet packet)
+		{
+			CallbackReceiveEvent?.Invoke(serialization.FromRaw(packet.Bytes, ObjType), packet);
+		}
+	}
+}
