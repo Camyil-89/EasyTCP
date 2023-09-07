@@ -13,7 +13,7 @@ namespace EasyTCP.Utilities
 	{
 		private Dictionary<ushort, PacketEntity> PacketObservers = new Dictionary<ushort, PacketEntity>();
 		private Dictionary<Type, ushort> PacketObserversTypes = new Dictionary<Type, ushort>();
-		public PacketEntity RegistrationPacket<T>(byte id)
+		public PacketEntity RegistrationPacket<T>(ushort id)
 		{
 			if (id == 0)
 				throw new Exception("0 is reserved");
